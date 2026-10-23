@@ -539,7 +539,7 @@ function topBarInit(){
  pdvHeader();netStatus();
 }
 function keysHelp(){
- const K=[['F2','Ir para a busca de produtos (de qualquer tela)'],['↓ ↑','Com texto na busca: destacar produto na lista'],['Enter','Adicionar o produto destacado, o código bipado ou o resultado único'],['3*código','Adicionar 3 unidades de uma vez'],['↑ ↓','Com a busca vazia: escolher o item da venda'],['+ −','Aumentar / diminuir a quantidade do item escolhido'],['Del','Remover o item escolhido'],['F4','Finalizar venda'],['F6','Ler código com a câmera'],['F8','Limpar a venda'],['Esc','Limpar a busca / fechar janela'],['1–5','No pagamento: Pix, Dinheiro, Débito, Crédito, Fiado']];
+ const K=[['F2','Ir para a busca de produtos (de qualquer tela)'],['↓ ↑','Com texto na busca: destacar produto na lista'],['Enter','Adicionar o produto destacado, o código bipado ou o resultado único'],['3*código','Adicionar 3 unidades de uma vez'],['↑ ↓','Com a busca vazia: escolher o item da venda'],['+ −','Aumentar / diminuir a quantidade do item escolhido'],['Del','Remover o item escolhido'],['F4','Finalizar venda'],['F6','Ler código com a câmera'],['F8','Limpar a venda'],['Esc','Limpar a busca / fechar janela'],['1–4','No pagamento: Pix, Dinheiro, Débito, Crédito']];
  modal(`<h2 class="h">Atalhos do teclado</h2><dl class="keys">${K.map(([k,d])=>`<dt><kbd>${k}</kbd></dt><dd>${d}</dd>`).join('')}</dl>`);
 }
 function artModal(){modal(`<img src="${ARTURL}" alt="Arte da oficina: mecânico encostado no carro — Mecânica, qualidade e confiança para o seu carro">`,{cls:'artmd'})}
@@ -560,8 +560,8 @@ const CI={
  servico:sv('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/>'),
 };
 const CATS={suspensao:'Suspensão',transmissao:'Transmissão',oleo:'Óleos',filtro:'Filtros',freio:'Freios',ignicao:'Ignição',iluminacao:'Iluminação',acessorios:'Acessórios',eletrica:'Elétrica',motor:'Motor',fluidos:'Fluidos e químicos',ferramentas:'Ferramentas',servico:'Serviços'};
-const METHODS=[{k:'pix',l:'Pix QR Code',i:'pix'},{k:'dinheiro',l:'Dinheiro',i:'cash'},{k:'debito',l:'Débito',i:'card'},{k:'credito',l:'Crédito',i:'card'},{k:'fiado',l:'Fiado',i:'user'}];
-const ML={pix:'Pix',dinheiro:'Dinheiro',debito:'Cartão débito',credito:'Cartão crédito',fiado:'Fiado'};
+const METHODS=[{k:'pix',l:'Pix QR Code',i:'pix'},{k:'dinheiro',l:'Dinheiro',i:'cash'},{k:'debito',l:'Débito',i:'card'},{k:'credito',l:'Crédito',i:'card'}];
+const ML={pix:'Pix',dinheiro:'Dinheiro',debito:'Cartão débito',credito:'Cartão crédito'};
 /* status de venda: 'entregue' (concluída) ou 'cancelado'.
    Status antigos da época da loja online (novo/pago/aguardando) são lidos como concluída. */
 const ST={entregue:['Concluída','st-ok'],cancelado:['Cancelada','st-x']};
@@ -703,7 +703,6 @@ function receiptHTML(o){
  <div class="l tt"><span>TOTAL</span><span>R$ ${m2s(o.total)}</span></div>
  <div class="l"><span>Pagamento</span><span>${ML[o.method]||esc(o.method)}${o.installments>1?' '+o.installments+'x':''}</span></div>
  ${o.received?`<div class="l"><span>Recebido</span><span>${m2s(o.received)}</span></div><div class="l"><span>Troco</span><span>${m2s(o.change)}</span></div>`:''}
- ${o.method==='fiado'?`<div class="l"><span>Cliente</span><span>${esc(o.customer.name)}</span></div><div class="c" style="margin-top:6px">${o.paid?'FIADO QUITADO'+(o.fiadoPaidMethod?' — '+ML[o.fiadoPaidMethod].toUpperCase():''):'*** EM ABERTO (FIADO) ***'}</div>`:''}
  ${o.status==='cancelado'?'<hr><div class="c"><b>*** PEDIDO CANCELADO ***</b></div>':''}
  <hr><div class="c">Obrigado pela preferência!<br>Volte sempre 🔧</div></div>`;
 }
@@ -711,7 +710,7 @@ function receiptText(o){
  const s=DB.settings,gd=r2((o.discount||0)-lineDisc(o));let t=`*${s.store.toUpperCase()}* — Comprovante ${o.num}\n${fdt(o.ts)}\n\n`;
  o.items.forEach(i=>t+=`${i.qty}x ${i.name} — ${fmt(i.price*i.qty-(i.disc||0))}\n`);
  if(gd>0)t+=`Desconto: -${fmt(gd)}\n`;
- t+=`\n*Total: ${fmt(o.total)}*\nPagamento: ${ML[o.method]}${o.installments>1?' '+o.installments+'x':''}${o.method==='fiado'&&!o.paid?' (em aberto)':''}\n`;
+ t+=`\n*Total: ${fmt(o.total)}*\nPagamento: ${ML[o.method]}${o.installments>1?' '+o.installments+'x':''}\n`;
  if(o.change)t+=`Troco: ${fmt(o.change)}\n`;
  return t+`\nObrigado! 🔧`;
 }
@@ -726,11 +725,11 @@ function showReceipt(o,title){
 }
 
 /* ---------- pagamento (PDV) ---------- */
-/* Teclas: 1–5 trocam a forma quando o foco não está num campo; Alt+1…5 sempre;
+/* Teclas: 1–4 trocam a forma quando o foco não está num campo; Alt+1…4 sempre;
    ← → trocam fora de campos de texto (inclusive no campo de valor recebido); Enter confirma; Esc fecha. */
-function payModal(total,{title='Pagamento',allowFiado=true,customer,onPay}){
+function payModal(total,{title='Pagamento',onPay}){
  let m='pix',inp=null,done=false;
- const ms=METHODS.filter(x=>allowFiado||x.k!=='fiado'),n=ms.length;
+ const ms=METHODS,n=ms.length;
  const el=modal(`<h2 class="h">${title}</h2><div class="paytot"><span>Total a pagar</span><b>${fmt(total)}</b></div>
   <div class="paym">${ms.map((x,i)=>`<button class="pm" data-m="${x.k}"><span class="k">${i+1}</span>${I[x.i]}<b>${x.l}</b></button>`).join('')}</div>
   <p class="mut sm paykeys" style="margin:-2px 0 10px">Trocar: <b>1</b>–<b>${n}</b> ou <b>← →</b> · <b>Alt+1…${n}</b> dentro dos campos · <b>Enter</b> confirma · <b>Esc</b> fecha</p>
@@ -770,12 +769,6 @@ function payModal(total,{title='Pagamento',allowFiado=true,customer,onPay}){
    const st=DB.settings;
    det.innerHTML=st.pix?`<div class="pixbox"><div class="pixqr">${pixQRSvg(pixPayload(st.pix,st.pixName,st.pixCity,total))}</div><div><b>${I.pix} Escaneie com o app do banco</b><span class="mut sm">Valor já preenchido</span><span class="pixv">${fmt(total)}</span><span class="pixk">Chave: ${esc(st.pix)}</span><p class="mut sm" style="margin:10px 0 0">Confira o recebimento no app do banco antes de confirmar.</p></div></div>`
     :`<div class="card" style="background:var(--y3);border:1.5px dashed #e0c25a;box-shadow:none;margin-bottom:14px"><b>${I.warn} Chave Pix não cadastrada.</b><br><span class="mut sm">Cadastre em ⚙ Configurações (canto superior direito) para gerar o QR Code automaticamente. Você ainda pode receber o Pix e confirmar aqui.</span></div>`;
-  }else if(m==='fiado'){
-   const names=[...new Map(DB.orders.filter(o=>o.method==='fiado'&&o.customer.name).map(o=>[o.customer.name,o.customer.phone])).entries()];
-   det.innerHTML=`<label class="f">Nome do cliente *</label><input class="input" id="fn" list="fnl" value="${esc(customer&&customer.name||'')}"><datalist id="fnl">${names.map(n=>`<option value="${esc(n[0])}">`).join('')}</datalist>
-   <label class="f">Telefone / WhatsApp</label><input class="input" id="fp" inputmode="tel" value="${esc(customer&&customer.phone||'')}">
-   <p class="mut sm">A venda fica em aberto em <b>Vendas → Fiado</b> até o cliente pagar.</p>`;
-   const fn=$('#fn',det);fn.oninput=()=>{const f=names.find(n=>n[0]===fn.value);if(f)$('#fp',det).value=f[1]||''};
   }
  }
  function confirmPay(){
@@ -783,7 +776,6 @@ function payModal(total,{title='Pagamento',allowFiado=true,customer,onPay}){
   const info={method:m,total};
   if(m==='dinheiro'){info.received=parseMoney(inp.value);info.change=r2(info.received-total);if(info.change<0){beep(false);inp.focus();return toast(info.received?'Valor recebido menor que o total':'Informe o valor recebido','err')}}
   if(m==='credito')info.installments=+$('#parc',el).value;
-  if(m==='fiado'){info.customer={name:$('#fn',el).value.trim(),phone:$('#fp',el).value.trim()};if(!info.customer.name){$('#fn',el).focus();return toast('Informe o nome do cliente do fiado','err')}}
   done=true;closeModal(el);onPay(info);
  }
  ok.onclick=confirmPay;
@@ -1045,7 +1037,7 @@ function finalizeSale(pay){
   const t=pdvTotals();   /* recalculado com os preços do estado mais novo (tx já recarregou o DB) */
   if(Math.abs(t.total-pay.total)>0.004){err=`O total mudou para ${fmt(t.total)} (preço alterado em outra aba). Confira e finalize de novo.`;return null}
   const items=pcart.items.map(i=>{const p=prod2(db,i.pid);return{pid:p.id,code:p.code,name:p.name,qty:i.qty,price:p.price,cost:p.cost||0,disc:r2(Math.min(i.disc||0,p.price*i.qty)),service:!!p.service}});
-  const o={id:uid(),num:nextNum(db),ts:Date.now(),channel:'PDV',items,subtotal:t.sub,discount:t.disc,total:t.total,method:pay.method,paid:pay.method!=='fiado',status:'entregue',seller:user,cashId:cash.id,customer:pay.customer||{}};
+  const o={id:uid(),num:nextNum(db),ts:Date.now(),channel:'PDV',items,subtotal:t.sub,discount:t.disc,total:t.total,method:pay.method,paid:true,status:'entregue',seller:user,cashId:cash.id,customer:pay.customer||{}};
   if(o.paid)o.paidTs=o.ts;if(pay.method==='dinheiro'){o.received=pay.received;o.change=pay.change}if(pay.installments)o.installments=pay.installments;
   items.forEach(i=>mov(db,i.pid,-i.qty,'venda',o.num,'PDV',user));
   db.orders.push(o);
@@ -1054,7 +1046,7 @@ function finalizeSale(pay){
  });
  if(!o){beep(false);toast(err,'err');refresh();return}
  pcart=emptyCart();savePC();clearPS();pdvGrid();pdvCart();pdvHeader();
- showReceipt(o,o.method==='fiado'?'Venda no fiado registrada':'Venda finalizada');
+ showReceipt(o,'Venda finalizada');
 }
 /* ---------- caixa ---------- */
 function doOpenCash(amount){
@@ -1067,14 +1059,12 @@ function cashReport(c){
  const pays=DB.payments.filter(p=>p.cashId===c.id),by={};Object.keys(ML).forEach(k=>by[k]=0);
  pays.forEach(p=>by[p.method]=r2((by[p.method]||0)+p.amount));
  const sales=DB.orders.filter(o=>o.cashId===c.id&&valid(o));
- const fiado=sales.filter(o=>o.method==='fiado');
  const items=sales.reduce((s,o)=>s+o.items.reduce((a,i)=>a+i.qty,0),0);
  const vendido=r2(sales.reduce((s,o)=>s+o.total,0));
  const recebido=r2(pays.reduce((s,p)=>s+p.amount,0));
- const fiadoRec=r2(pays.filter(p=>p.kind==='fiado').reduce((s,p)=>s+p.amount,0));
  const sangria=r2((c.moves||[]).filter(m=>m.t==='sangria').reduce((s,m)=>s+m.v,0)),supr=r2((c.moves||[]).filter(m=>m.t==='suprimento').reduce((s,m)=>s+m.v,0));
  const esperado=r2(c.openAmount+by.dinheiro+supr-sangria);
- return{by,sales,fiado,items,vendido,recebido,fiadoRec,esperado,sangria,supr,lucro:r2(sales.reduce((s,o)=>s+orderProfit(o),0))};
+ return{by,sales,items,vendido,recebido,esperado,sangria,supr,lucro:r2(sales.reduce((s,o)=>s+orderProfit(o),0))};
 }
 function cashReportHTML(c){
  const r=cashReport(c),s=DB.settings;
@@ -1083,10 +1073,9 @@ function cashReportHTML(c){
  ${c.closeTs?`<div class="l"><span>Fechamento</span><span>${fdt(c.closeTs)}</span></div><div class="l"><span>Fechado por</span><span>${esc(c.closeBy)}</span></div>`:'<div class="c">(caixa ainda aberto)</div>'}<hr>
  <div class="l"><span>Vendas no balcão</span><span>${r.sales.length}</span></div><div class="l"><span>Itens vendidos</span><span>${r.items}</span></div>
  <div class="l tt"><span>TOTAL VENDIDO</span><span>${m2s(r.vendido)}</span></div><div class="l"><span>Lucro bruto estimado</span><span>${m2s(r.lucro)}</span></div><hr>
- <b>RECEBIMENTOS</b>${Object.keys(ML).filter(k=>k!=='fiado').map(k=>`<div class="l"><span>${ML[k]}</span><span>${m2s(r.by[k])}</span></div>`).join('')}
+ <b>RECEBIMENTOS</b>${Object.keys(ML).map(k=>`<div class="l"><span>${ML[k]}</span><span>${m2s(r.by[k])}</span></div>`).join('')}
  <div class="l tt"><span>TOTAL RECEBIDO</span><span>${m2s(r.recebido)}</span></div>
- ${r.fiadoRec?`<div class="l"><span>(inclui fiado recebido)</span><span>${m2s(r.fiadoRec)}</span></div>`:''}
- <div class="l"><span>Fiado concedido</span><span>${m2s(r.fiado.reduce((s,o)=>s+o.total,0))}</span></div><hr>
+ <hr>
  <b>DINHEIRO NA GAVETA</b><div class="l"><span>Fundo de troco</span><span>${m2s(c.openAmount)}</span></div><div class="l"><span>+ Recebido em dinheiro</span><span>${m2s(r.by.dinheiro)}</span></div>
  ${r.supr?`<div class="l"><span>+ Suprimentos</span><span>${m2s(r.supr)}</span></div>`:''}${r.sangria?`<div class="l"><span>− Sangrias</span><span>${m2s(r.sangria)}</span></div>`:''}
  <div class="l tt"><span>ESPERADO</span><span>${m2s(r.esperado)}</span></div>
@@ -1214,19 +1203,18 @@ function tDash(){
  const since=Date.now()-30*864e5,top={};os.filter(o=>o.ts>=since).forEach(o=>o.items.forEach(i=>{top[i.pid]=top[i.pid]||{n:i.name,q:0,v:0};top[i.pid].q+=i.qty;top[i.pid].v+=i.price*i.qty-(i.disc||0)}));
  const tl=Object.values(top).sort((a,b)=>b.q-a.q).slice(0,6),tm=Math.max(1,...tl.map(x=>x.q));
  const low=DB.products.filter(isLow).sort((a,b)=>a.stock-b.stock);
- const byM={};td.filter(o=>o.paid||o.method==='fiado').forEach(o=>byM[o.method]=r2((byM[o.method]||0)+o.total));
- const fiadoAb=r2(DB.orders.filter(o=>valid(o)&&o.method==='fiado'&&!o.paid).reduce((s,o)=>s+o.total,0));
+ const byM={};td.filter(o=>o.paid).forEach(o=>byM[o.method]=r2((byM[o.method]||0)+o.total));
+ const valEst=r2(DB.products.filter(p=>!p.service).reduce((s,p)=>s+p.cost*Math.max(0,p.stock),0));
  const c=openCash();
  const hoje=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
  $('#adm').innerHTML=`<div class="dhead"><h2 class="h">Resumo de hoje</h2><span class="mut">${esc(hoje)} · ${c?`caixa aberto por ${esc(c.openBy)} às ${fh(c.openTs)}`:'caixa fechado'}</span><span class="sp"></span><a class="btn y" href="#/pdv">${I.cart} Vender</a><a class="btn" href="#/painel/estoque">${I.box} Estoque</a></div>
  <div class="kpis"><div class="kpi y"><div class="l">Vendas hoje</div><div class="v">${fmt(fat)}</div><div class="sm">${td.length} pedidos · ticket ${fmt(td.length?fat/td.length:0)}</div></div>
  <div class="kpi g"><div class="l">Lucro bruto hoje</div><div class="v">${fmt(luc)}</div><div class="sm" style="color:#a9c0c3">margem ${fat?Math.round(luc/fat*100):0}%</div></div>
- <div class="kpi"><div class="l">Fiado em aberto</div><div class="v">${fmt(fiadoAb)}</div><div class="sm mut">a receber de clientes</div></div>
+ <div class="kpi"><div class="l">Valor em estoque</div><div class="v">${fmt(valEst)}</div><div class="sm mut">a preço de custo</div></div>
  <div class="kpi" style="${low.length?'background:var(--redbg)':''}"><div class="l">Estoque baixo</div><div class="v" style="${low.length?'color:var(--red)':''}">${low.length}</div><div class="sm mut">produtos no mínimo ou abaixo</div></div></div>
  <div class="dgrid"><div class="card"><h3 class="h">Faturamento — últimos 7 dias</h3>${days.some(d=>d.v)?`<div class="bars">${days.map((d,i)=>`<div class="bc ${i===6?'today':''}"><span class="bv">${d.v?Math.round(d.v):''}</span><div class="b" style="height:${d.v/mx*100}%"></div><span class="bl">${i===6?'Hoje':wd[new Date(d.s).getDay()]}</span></div>`).join('')}</div>`:emptyBox(I.chart,'Sem vendas nos últimos 7 dias','O gráfico aparece aqui assim que a primeira venda for feita.',`<a class="btn y" href="#/pdv">${I.cart} Ir para Vender</a>`,'sm-e')}</div>
  <div class="card"><h3 class="h">Hoje por forma de pagamento</h3><div class="row" style="margin-bottom:12px">${c?`<span class="pill ok">Caixa aberto · ${esc(c.openBy)}</span>`:'<span class="pill r">Caixa fechado</span>'}</div>
-  ${Object.keys(ML).map(k=>`<div class="hbar"><span>${ML[k]}</span><b>${fmt(byM[k]||0)}</b><div class="tr"><i style="width:${fat?(byM[k]||0)/fat*100:0}%"></i></div></div>`).join('')}
-  <p class="mut sm">Fiado em aberto (total): <b>${fmt(fiadoAb)}</b></p></div>
+  ${Object.keys(ML).map(k=>`<div class="hbar"><span>${ML[k]}</span><b>${fmt(byM[k]||0)}</b><div class="tr"><i style="width:${fat?(byM[k]||0)/fat*100:0}%"></i></div></div>`).join('')}</div>
  <div class="card"><h3 class="h">Mais vendidos (30 dias)</h3>${tl.length?tl.map(x=>`<div class="hbar"><span>${esc(x.n)}</span><b>${x.q} un</b><div class="tr"><i style="width:${x.q/tm*100}%;background:var(--g)"></i></div></div>`).join(''):emptyBox(I.tag,'Nada vendido ainda','Os produtos que mais saem nos últimos 30 dias aparecem aqui.','','sm-e')}</div>
  <div class="card"><h3 class="h" style="color:var(--red)">${I.warn} Estoque baixo</h3>${low.length?low.map(p=>`<div class="li"><span class="ico" style="background:var(--redbg);color:var(--red)">${catIcon(p)}</span><div style="flex:1"><b>${esc(p.name)}</b><div class="mut sm">mín. ${p.min} · ${esc(p.code)}</div></div><b style="color:var(--red);font-size:20px">${p.stock}</b><button class="btn s" onclick="nfModal('${p.id}')">Repor</button></div>`).join(''):emptyBox(I.check,'Estoque em dia','Nenhum produto abaixo do mínimo.','','sm-e')}</div>
 </div>`;
@@ -1408,30 +1396,13 @@ function tVendas(){
  const per={hoje:sod(Date.now()),'7':sod(Date.now()-6*864e5),'30':sod(Date.now()-29*864e5),tudo:0}[venF.per];
  const list=DB.orders.filter(o=>o.ts>=per&&(!venF.m||o.method===venF.m)).sort((a,b)=>b.ts-a.ts);
  const v=list.filter(valid),tot=r2(v.reduce((s,o)=>s+o.total,0)),luc=r2(v.reduce((s,o)=>s+orderProfit(o),0));
- const fiado=DB.orders.filter(o=>valid(o)&&o.method==='fiado'&&!o.paid);
  $('#adm').innerHTML=`<div class="toolbar"><div class="sw">${[['hoje','Hoje'],['7','7 dias'],['30','30 dias'],['tudo','Tudo']].map(([k,l])=>`<button class="${venF.per===k?'on':''}" onclick="venF.per='${k}';tVendas()">${l}</button>`).join('')}</div>
  <select class="input" style="max-width:170px" onchange="venF.m=this.value;tVendas()"><option value="">Todos pagamentos</option>${Object.entries(ML).map(([k,l])=>`<option value="${k}" ${venF.m===k?'selected':''}>${l}</option>`).join('')}</select><span class="sp"></span>
  <button class="btn s" onclick="csv([['Pedido','Data','Cliente','Vendedor','Pagamento','Pago','Status','Desconto','Total','Lucro'],...DB.orders.map(o=>[o.num,fdt(o.ts),o.customer.name||'',o.seller,ML[o.method],o.paid?'sim':'não',stInfo(o)[0],m2s(o.discount),m2s(o.total),m2s(orderProfit(o))])],'vendas-bancada.csv')">${I.down} CSV</button></div>
  <div class="kpis"><div class="kpi y"><div class="l">Faturamento</div><div class="v">${fmt(tot)}</div></div><div class="kpi g"><div class="l">Lucro bruto</div><div class="v">${fmt(luc)}</div></div><div class="kpi"><div class="l">Pedidos</div><div class="v">${v.length}</div></div><div class="kpi"><div class="l">Ticket médio</div><div class="v">${fmt(v.length?tot/v.length:0)}</div></div></div>
- ${fiado.length?`<div class="card" style="margin-bottom:14px;border-left:6px solid var(--red)"><h3 class="h">Fiado em aberto — ${fmt(fiado.reduce((s,o)=>s+o.total,0))}</h3>${fiado.map(o=>`<div class="li"><b>${esc(o.num)}</b><div style="flex:1"><b>${esc(o.customer.name)}</b> <span class="mut sm">${esc(o.customer.phone||'')} · ${fdt(o.ts)} · ${Math.floor((Date.now()-o.ts)/864e5)} dias</span></div><b>${fmt(o.total)}</b><a class="btn s ok" target="_blank" rel="noopener" href="${waLink(o.customer.phone,`Olá ${o.customer.name}! Lembrete da ${DB.settings.store}: compra ${o.num} de ${fdt(o.ts)} no valor de ${fmt(o.total)} está em aberto.`)}">${I.wa}</a><button class="btn s y" onclick="receiveFiado('${o.id}')">Receber</button></div>`).join('')}</div>`:''}
  <div class="tbl-w" ${list.length?'':'hidden'}><table class="t"><thead><tr><th>Pedido</th><th>Data</th><th>Cliente / vendedor</th><th>Pagamento</th><th>Status</th><th class="r-al">Total</th></tr></thead><tbody>
- ${list.map(o=>`<tr class="click" onclick="orderDetail('${o.id}')"><td><b>${esc(o.num)}</b></td><td class="num">${fdt(o.ts)}</td><td>${esc(o.customer.name||'—')}<div class="mut sm">${esc(o.seller)}</div></td><td>${ML[o.method]}${o.method==='fiado'?(o.paid?' <span class="pill ok">quitado</span>':' <span class="pill r">aberto</span>'):''}</td><td>${stPill(o)}</td><td class="r-al"><b>${fmt(o.total)}</b></td></tr>`).join('')}
+ ${list.map(o=>`<tr class="click" onclick="orderDetail('${o.id}')"><td><b>${esc(o.num)}</b></td><td class="num">${fdt(o.ts)}</td><td>${esc(o.customer.name||'—')}<div class="mut sm">${esc(o.seller)}</div></td><td>${ML[o.method]||o.method}</td><td>${stPill(o)}</td><td class="r-al"><b>${fmt(o.total)}</b></td></tr>`).join('')}
  </tbody></table></div>${list.length?'':emptyBox(I.cash,DB.orders.length?'Nenhuma venda no período':'Nenhuma venda ainda',DB.orders.length?'Escolha outro período ou forma de pagamento.':'As vendas feitas no balcão aparecem aqui com recibo, forma de pagamento e lucro.',DB.orders.length?'':`<a class="btn y" href="#/pdv">${I.pdv} Fazer primeira venda</a>`,'box')}`;
-}
-/* fiado recebido entra no caixa aberto (na forma de pagamento usada) */
-function receiveFiado(id){
- const o=DB.orders.find(x=>x.id===id);
- if(!o||o.paid||!valid(o)){toast('Este fiado já foi recebido ou cancelado','err');return refresh()}
- needCash(()=>payModal(o.total,{title:`Receber fiado ${esc(o.num)} — ${esc(o.customer.name)}`,allowFiado:false,onPay:pay=>{
-  const user=operator();let err='';
-  const r=tx(db=>{
-   const x=db.orders.find(y=>y.id===id);if(!x||x.paid||!valid(x)){err='Este fiado já foi recebido ou cancelado';return null}
-   const cash=db.cash.find(c=>c.status==='aberto');if(!cash){err='Caixa fechado — abra o caixa para receber';return null}
-   x.paid=true;x.paidTs=Date.now();x.fiadoPaidMethod=pay.method;
-   db.payments.push({id:uid(),ts:x.paidTs,orderId:x.id,num:x.num,method:pay.method,amount:x.total,cashId:cash.id,kind:'fiado',user});return x});
-  if(!r){toast(err,'err');refresh();return}
-  toast(`Fiado ${esc(r.num)} recebido (${ML[pay.method]})${pay.change>0?` — troco ${fmt(pay.change)}`:''}`,'ok');refresh();
- }}));
 }
 function orderDetail(id){
  const o=DB.orders.find(x=>x.id===id);if(!o)return;
@@ -1444,13 +1415,13 @@ function orderDetail(id){
 /* cancelamento: estorna o estoque UMA vez (conferido dentro da transação) e lança a devolução no caixa aberto */
 async function cancelOrder(id){
  const o=DB.orders.find(x=>x.id===id);if(!o||!valid(o))return false;
- const pm=o.fiadoPaidMethod||o.method;
+ const pm=o.method;
  if(!await confirmBox(`Cancelar o pedido <b>${esc(o.num)}</b>? Os itens voltam para o estoque.${o.paid?`<br><br><b style="color:var(--red)">Este pedido está pago (${ML[pm]} ${fmt(o.total)}): faça a devolução do valor ao cliente.</b>`:''}`,'Cancelar pedido','r'))return false;
  const user=operator();
  const x=tx(db=>{const x=db.orders.find(y=>y.id===id);if(!x||x.status==='cancelado')return null;x.status='cancelado';x.cancelTs=Date.now();x.cancelBy=user;
   x.items.forEach(i=>{if(!i.service&&prod2(db,i.pid))mov(db,i.pid,i.qty,'estorno','Cancelamento '+x.num,x.channel||'PDV',user)});
   if(x.paid){const cash=db.cash.find(c=>c.status==='aberto');x.refunded=true;
-   db.payments.push({id:uid(),ts:Date.now(),orderId:x.id,num:x.num,method:x.fiadoPaidMethod||x.method,amount:-x.total,cashId:cash?cash.id:null,kind:'estorno',user})}
+   db.payments.push({id:uid(),ts:Date.now(),orderId:x.id,num:x.num,method:x.method,amount:-x.total,cashId:cash?cash.id:null,kind:'estorno',user})}
   return x});
  if(!x){toast(`Pedido ${esc(o.num)} já estava cancelado`,'y');refresh();return true}
  toast(`Pedido ${esc(o.num)} cancelado, estoque estornado`,'ok');refresh();return true;
@@ -1460,7 +1431,7 @@ async function cancelOrder(id){
 function tCaixa(){
  const c=openCash(),r=c&&cashReport(c),hist=DB.cash.filter(x=>x.status==='fechado').sort((a,b)=>b.openTs-a.openTs);
  $('#adm').innerHTML=`<div class="card" style="margin-bottom:14px">${c?`<div class="row"><h3 class="h" style="margin:0">Caixa aberto</h3><span class="pill ok">desde ${fdt(c.openTs)} · ${esc(c.openBy)}</span><span class="sp"></span><button class="btn" onclick="printHTML(cashReportHTML(openCash()))">${I.print} Relatório parcial</button><button class="btn r" onclick="cashModal()">Fechar caixa</button></div>
- <div class="kpis" style="margin:14px 0 0"><div class="kpi y"><div class="l">Total vendido</div><div class="v">${fmt(r.vendido)}</div><div class="sm">${r.sales.length} vendas · ${r.items} itens</div></div>${['dinheiro','pix','debito','credito'].map(k=>`<div class="kpi"><div class="l">${ML[k]}</div><div class="v">${fmt(r.by[k])}</div></div>`).join('')}<div class="kpi"><div class="l">Fiado concedido</div><div class="v">${fmt(r.fiado.reduce((s,o)=>s+o.total,0))}</div></div><div class="kpi g"><div class="l">Dinheiro esperado</div><div class="v">${fmt(r.esperado)}</div></div></div>`
+ <div class="kpis" style="margin:14px 0 0"><div class="kpi y"><div class="l">Total vendido</div><div class="v">${fmt(r.vendido)}</div><div class="sm">${r.sales.length} vendas · ${r.items} itens</div></div>${['dinheiro','pix','debito','credito'].map(k=>`<div class="kpi"><div class="l">${ML[k]}</div><div class="v">${fmt(r.by[k])}</div></div>`).join('')}<div class="kpi g"><div class="l">Dinheiro esperado</div><div class="v">${fmt(r.esperado)}</div></div></div>`
  :`<div class="row"><h3 class="h" style="margin:0">Caixa fechado</h3><span class="sp"></span><button class="btn y lg" onclick="cashModal()">Abrir caixa</button></div><p class="mut" style="margin:8px 0 0">Abra o caixa no início do dia informando o fundo de troco. Todas as vendas do PDV ficam vinculadas a ele.</p>`}</div>
  <h3 class="h">Histórico de caixas</h3><div class="tbl-w" ${hist.length?'':'hidden'}><table class="t"><thead><tr><th>Abertura</th><th>Fechamento</th><th>Operador</th><th class="r-al">Vendido</th><th class="r-al">Dinheiro esperado</th><th class="r-al">Contado</th><th class="r-al">Diferença</th><th></th></tr></thead><tbody>
  ${hist.map(x=>{const rr=cashReport(x),d=r2((x.counted??rr.esperado)-rr.esperado);return `<tr><td>${fdt(x.openTs)}</td><td>${fdt(x.closeTs)}</td><td>${esc(x.openBy)}</td><td class="r-al"><b>${fmt(rr.vendido)}</b></td><td class="r-al">${fmt(rr.esperado)}</td><td class="r-al">${fmt(x.counted)}</td><td class="r-al" style="color:${d<0?'var(--red)':d>0?'var(--ok)':''}">${fmt(d)}</td><td><button class="btn s" onclick="cashView('${x.id}')">${I.print} Relatório</button></td></tr>`}).join('')}
