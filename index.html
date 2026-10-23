@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14323A">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%2211%22%20fill%3D%22%23F2B705%22/%3E%3Cg%20transform%3D%22translate%285%205%29%20scale%28.79%29%22%3E%3Cpath%20fill%3D%22%2314323A%22%20fill-rule%3D%22evenodd%22%20d%3D%22M40.72%2018.83%20L45.56%2019.63%20L45.56%2028.37%20L40.72%2029.17%20L39.48%2032.16%20L42.34%2036.16%20L36.16%2042.34%20L32.16%2039.48%20L29.17%2040.72%20L28.37%2045.56%20L19.63%2045.56%20L18.83%2040.72%20L15.84%2039.48%20L11.84%2042.34%20L5.66%2036.16%20L8.52%2032.16%20L7.28%2029.17%20L2.44%2028.37%20L2.44%2019.63%20L7.28%2018.83%20L8.52%2015.84%20L5.66%2011.84%20L11.84%205.66%20L15.84%208.52%20L18.83%207.28%20L19.63%202.44%20L28.37%202.44%20L29.17%207.28%20L32.16%208.52%20L36.16%205.66%20L42.34%2011.84%20L39.48%2015.84Z%20M35.5%2024%20a11.5%2011.5%200%201%200%20-23.0%200%20a11.5%2011.5%200%201%200%2023.0%200Z%22/%3E%3Cg%20transform%3D%22rotate%2845%2024%2024%29%22%3E%3Crect%20fill%3D%22%2314323A%22%20x%3D%2221.6%22%20y%3D%2219%22%20width%3D%224.8%22%20height%3D%2217.5%22%20rx%3D%222.4%22/%3E%3Ccircle%20fill%3D%22%2314323A%22%20cx%3D%2224%22%20cy%3D%2216.5%22%20r%3D%226.3%22/%3E%3Crect%20fill%3D%22%23F2B705%22%20x%3D%2221.9%22%20y%3D%228.5%22%20width%3D%224.2%22%20height%3D%228.2%22%20rx%3D%22.8%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
-<title>Bancada — PDV e Estoque</title>
+<title>Boas Mãos Mecânica — PDV e Estoque</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
@@ -595,7 +595,7 @@ function eanSVG(code){
    BANCO DE DADOS (localStorage, chave KEY, DB.v===2)
    ===================================================================== */
 let DB;
-const DEF_SETTINGS={store:'Bancada',whats:'',address:'',hours:'',pix:'',pixName:'BANCADA',pixCity:'',users:['Balcão']};
+const DEF_SETTINGS={store:'Boas Mãos Mecânica',whats:'',address:'Conjunto Jardim — N. Sra. do Socorro/SE',hours:'',pix:'',pixName:'BOAS MAOS MECANICA',pixCity:'N S DO SOCORRO',users:['Balcão']};
 /* valida e completa campos ausentes (backups / versões anteriores) sem descartar nada */
 function fixDB(db){
  if(!db||typeof db!=='object'||db.v!==2||!Array.isArray(db.products))return null;
@@ -609,7 +609,7 @@ function fixDB(db){
 }
 function rawLoad(){try{return fixDB(JSON.parse(localStorage.getItem(KEY)))}catch(e){return null}}
 function load(){
- DB=rawLoad();if(DB)return;
+ DB=rawLoad();if(DB){if(DB.settings.store==='Bancada'){DB.settings.store='Boas Mãos Mecânica';if(!DB.settings.pixName||DB.settings.pixName==='BANCADA')DB.settings.pixName='BOAS MAOS MECANICA';save()}return}
  /* dado ilegível / versão desconhecida: guarda uma cópia antes de recomeçar */
  try{const old=localStorage.getItem(KEY);if(old)localStorage.setItem(KEY+'_recuperacao_'+Date.now(),old)}catch(e){}
  DB=seed();save();
@@ -628,7 +628,7 @@ const operator=()=>{const u=localStorage.getItem(OPKEY),us=DB.settings.users;ret
 function seed(empty){
  /* sistema recém-criado: sem vendas, sem histórico. Só os produtos cadastrados pelo dono. */
  const db={v:2,seq:0,updated:Date.now(),
-  settings:{store:'Bancada',whats:'',address:'',hours:'',pix:'',pixName:'BANCADA',pixCity:'',users:['Balcão']},
+  settings:{store:'Boas Mãos Mecânica',whats:'',address:'Conjunto Jardim — N. Sra. do Socorro/SE',hours:'',pix:'',pixName:'BOAS MAOS MECANICA',pixCity:'N S DO SOCORRO',users:['Balcão']},
   products:[],movements:[],orders:[],payments:[],cash:[],nfs:[]};
  if(!empty)db.products.push(
   {id:'p1',code:'7898564680492',name:'Homocinética 22×22 dentes',brand:'Motoraço',ref:'MA1355-499A',cat:'transmissao',
@@ -1479,7 +1479,7 @@ function settingsModal(){
  <div class="grid2"><div><label class="f">Nome do recebedor</label><input class="input" id="s6" value="${esc(s.pixName||'')}" maxlength="25"></div><div><label class="f">Cidade</label><input class="input" id="s7" value="${esc(s.pixCity||'')}" maxlength="15" placeholder="Ex.: Aracaju"></div></div>
  <label class="f">Vendedores / operadores (separados por vírgula)</label><input class="input" id="s9" value="${esc(s.users.join(', '))}">
  <div class="foot"><button class="btn r" data-reset>Apagar tudo e recomeçar</button><button class="btn" data-bk>${I.down} Backup (JSON)</button><label class="btn" style="cursor:pointer">Restaurar backup<input type="file" accept=".json" hidden id="rbk"></label><span class="sp"></span><button class="btn y lg" data-ok>Salvar</button></div>`,{onEnter:()=>saveS()});
- const saveS=()=>{tx(db=>{Object.assign(db.settings,{store:$('#s1',el).value||'Bancada',whats:$('#s2',el).value,address:$('#s3',el).value,hours:$('#s4',el).value,pix:normPixKey($('#s5',el).value),pixName:$('#s6',el).value,pixCity:$('#s7',el).value,users:$('#s9',el).value.split(',').map(x=>x.trim()).filter(Boolean)});if(!db.settings.users.length)db.settings.users=['Balcão']});closeModal(el);toast('Configurações salvas','ok');refresh()};
+ const saveS=()=>{tx(db=>{Object.assign(db.settings,{store:$('#s1',el).value||'Boas Mãos Mecânica',whats:$('#s2',el).value,address:$('#s3',el).value,hours:$('#s4',el).value,pix:normPixKey($('#s5',el).value),pixName:$('#s6',el).value,pixCity:$('#s7',el).value,users:$('#s9',el).value.split(',').map(x=>x.trim()).filter(Boolean)});if(!db.settings.users.length)db.settings.users=['Balcão']});closeModal(el);toast('Configurações salvas','ok');refresh()};
  el.querySelector('[data-ok]').onclick=saveS;
  el.querySelector('[data-bk]').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));a.download='bancada-backup-'+today()+'.json';a.click()};
  $('#rbk',el).onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let d;
