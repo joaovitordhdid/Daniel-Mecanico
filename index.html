@@ -218,6 +218,8 @@ body.m-pdv{overflow:hidden}
 .cx:hover{filter:brightness(1.1);border-color:rgba(255,255,255,.4)}
 .cx.on{background:rgba(46,125,50,.28);color:#c9f2d5;border-color:rgba(130,210,150,.35)}
 .cx.on .dot{background:#5fd27a;box-shadow:0 0 0 3px rgba(95,210,122,.25)}
+.cx.on.old{background:var(--y);color:var(--g);border-color:var(--y2)}
+.cx.on.old .dot{background:var(--red);box-shadow:0 0 0 3px rgba(198,40,40,.25)}
 .cx.off{background:var(--red);color:#fff;animation:pulse 1.6s infinite}
 @keyframes pulse{50%{box-shadow:0 0 0 5px rgba(198,40,40,.35)}}
 .dot{width:9px;height:9px;border-radius:50%;background:currentColor;flex:none}
@@ -483,6 +485,21 @@ const m2s=v=>(+v||0).toFixed(2).replace('.',',');
 const lsGet=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){toast('Não foi possível salvar no navegador','err')}};
 const onlyDigits=s=>String(s||'').replace(/\D/g,'');
+/* chave Pix no formato que o app do banco aceita: CPF/CNPJ só dígitos, celular +55DDD…,
+   e-mail minúsculo; chave aleatória e outros textos ficam como digitados */
+const cpfOk=d=>{if(!/^\d{11}$/.test(d)||/^(\d)\1+$/.test(d))return false;const dv=n=>{let s=0;for(let i=0;i<n;i++)s+=(+d[i])*(n+1-i);return (s*10%11)%10};return dv(9)==+d[9]&&dv(10)==+d[10]};
+function normPixKey(k){
+ k=String(k||'').trim();if(!k)return '';
+ if(k.includes('@'))return k.replace(/\s/g,'').toLowerCase();
+ if(!/^[\d\s().\-\/+]+$/.test(k))return k;
+ const d=onlyDigits(k);
+ if(k.startsWith('+'))return '+'+d;
+ if(d.length===14)return d;
+ if(d.length===11&&!/[()\s]/.test(k)&&cpfOk(d))return d;
+ if(d.length===10||d.length===11)return '+55'+d;
+ if((d.length===12||d.length===13)&&d.startsWith('55'))return '+'+d;
+ return d;
+}
 
 /* ---------- ícones ---------- */
 const sv=p=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;
@@ -535,7 +552,7 @@ const METHODS=[{k:'pix',l:'Pix QR Code',i:'pix'},{k:'dinheiro',l:'Dinheiro',i:'c
 const ML={pix:'Pix',dinheiro:'Dinheiro',debito:'Cartão débito',credito:'Cartão crédito',fiado:'Fiado'};
 /* status de venda: 'entregue' (concluída) ou 'cancelado'.
    Status antigos da época da loja online (novo/pago/aguardando) são lidos como concluída. */
-const ST={entregue:['Concluída','st-ok'],cancelado:['Cancelado','st-x']};
+const ST={entregue:['Concluída','st-ok'],cancelado:['Cancelada','st-x']};
 const MV={venda:['Venda','r'],entrada:['Entrada','ok'],ajuste:['Ajuste','b'],estorno:['Estorno','y'],inicial:['Implantação','']};
 const stInfo=o=>ST[o.status]||ST.entregue;
 const stPill=o=>{const x=stInfo(o);return `<span class="pill ${x[1]}">${x[0]}</span>`};
@@ -682,7 +699,7 @@ function receiptText(o){
  const s=DB.settings,gd=r2((o.discount||0)-lineDisc(o));let t=`*${s.store.toUpperCase()}* — Comprovante ${o.num}\n${fdt(o.ts)}\n\n`;
  o.items.forEach(i=>t+=`${i.qty}x ${i.name} — ${fmt(i.price*i.qty-(i.disc||0))}\n`);
  if(gd>0)t+=`Desconto: -${fmt(gd)}\n`;
- t+=`\n*Total: ${fmt(o.total)}*\nPagamento: ${ML[o.method]}${o.method==='fiado'&&!o.paid?' (em aberto)':''}\n`;
+ t+=`\n*Total: ${fmt(o.total)}*\nPagamento: ${ML[o.method]}${o.installments>1?' '+o.installments+'x':''}${o.method==='fiado'&&!o.paid?' (em aberto)':''}\n`;
  if(o.change)t+=`Troco: ${fmt(o.change)}\n`;
  return t+`\nObrigado! 🔧`;
 }
@@ -691,7 +708,8 @@ function showReceipt(o,title){
  ${o.change?`<div class="troco"><span>Troco</span><b>${fmt(o.change)}</b></div>`:''}
  ${receiptHTML(o)}
  <div class="foot"><button class="btn" data-p>${I.print} Imprimir</button><a class="btn ok" target="_blank" rel="noopener" href="${waLink(o.customer&&o.customer.phone,receiptText(o))}">${I.wa} WhatsApp</a><button class="btn y lg" data-n autofocus>Próxima venda (Enter)</button></div>`,{onEnter:()=>closeModal(el),scanThrough:true});
- el.querySelector('[data-p]').onclick=()=>printHTML(receiptHTML(o));
+ /* depois de imprimir, o foco volta para "Próxima venda": o Enter não imprime de novo */
+ el.querySelector('[data-p]').onclick=()=>{printHTML(receiptHTML(o));el.querySelector('[data-n]').focus()};
  el.querySelector('[data-n]').onclick=()=>closeModal(el);
 }
 
@@ -894,7 +912,10 @@ function renderPDV(){
 function focusSearch(){const ps=$('#ps');if(ps&&MODE==='pdv'&&!modals.length)ps.focus()}
 function pdvHeader(){
  const c=openCash(),b=$('#cxb');if(!b)return;
- b.className='cx '+(c?'on':'off');b.innerHTML=c?`<span class="dot"></span>Caixa aberto · ${esc(c.openBy)} · ${fh(c.openTs)}`:`<span class="dot"></span>Caixa fechado — abrir`;
+ /* caixa esquecido aberto de outro dia: mostra a data para o operador fechar e reabrir */
+ const old=c&&dkey(c.openTs)!==today();
+ b.className='cx '+(c?'on':'off')+(old?' old':'');b.title=old?'Este caixa foi aberto em outro dia. Toque para fechar e abrir o de hoje.':'';
+ b.innerHTML=c?(old?`<span class="dot"></span>⚠ Caixa de ${fd(c.openTs)} ainda aberto · ${esc(c.openBy)}`:`<span class="dot"></span>Caixa aberto · ${esc(c.openBy)} · ${fh(c.openTs)}`):`<span class="dot"></span>Caixa fechado — abrir`;
 }
 function pdvCats(){const cs=[...new Set(DB.products.map(p=>p.cat))];$('#pcats').innerHTML=[['','Todos'],...cs.map(c=>[c,CATS[c]||c]),['__low','⚠ Estoque baixo']].map(([k,l])=>`<button class="chip ${pdvCat===k?'on':''}" onclick="pdvCat='${k}';pdvCats();pdvGrid()">${l}</button>`).join('')}
 /* busca: ignora acentos e maiúsculas; todas as palavras digitadas precisam aparecer
@@ -1430,7 +1451,7 @@ function settingsModal(){
  <div class="grid2"><div><label class="f">Nome do recebedor</label><input class="input" id="s6" value="${esc(s.pixName||'')}" maxlength="25"></div><div><label class="f">Cidade</label><input class="input" id="s7" value="${esc(s.pixCity||'')}" maxlength="15" placeholder="Ex.: Aracaju"></div></div>
  <label class="f">Vendedores / operadores (separados por vírgula)</label><input class="input" id="s9" value="${esc(s.users.join(', '))}">
  <div class="foot"><button class="btn r" data-reset>Apagar tudo e recomeçar</button><button class="btn" data-bk>${I.down} Backup (JSON)</button><label class="btn" style="cursor:pointer">Restaurar backup<input type="file" accept=".json" hidden id="rbk"></label><span class="sp"></span><button class="btn y lg" data-ok>Salvar</button></div>`,{onEnter:()=>saveS()});
- const saveS=()=>{tx(db=>{Object.assign(db.settings,{store:$('#s1',el).value||'Bancada',whats:$('#s2',el).value,address:$('#s3',el).value,hours:$('#s4',el).value,pix:$('#s5',el).value.trim(),pixName:$('#s6',el).value,pixCity:$('#s7',el).value,users:$('#s9',el).value.split(',').map(x=>x.trim()).filter(Boolean)});if(!db.settings.users.length)db.settings.users=['Balcão']});closeModal(el);toast('Configurações salvas','ok');refresh()};
+ const saveS=()=>{tx(db=>{Object.assign(db.settings,{store:$('#s1',el).value||'Bancada',whats:$('#s2',el).value,address:$('#s3',el).value,hours:$('#s4',el).value,pix:normPixKey($('#s5',el).value),pixName:$('#s6',el).value,pixCity:$('#s7',el).value,users:$('#s9',el).value.split(',').map(x=>x.trim()).filter(Boolean)});if(!db.settings.users.length)db.settings.users=['Balcão']});closeModal(el);toast('Configurações salvas','ok');refresh()};
  el.querySelector('[data-ok]').onclick=saveS;
  el.querySelector('[data-bk]').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));a.download='bancada-backup-'+today()+'.json';a.click()};
  $('#rbk',el).onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let d;
@@ -1452,7 +1473,8 @@ window.addEventListener('storage',e=>{
   const d=rawLoad();
   if(d){DB=d;if(MODE==='pdv'||!modals.length)refresh();else staleView=true}
  }
- if((e.key===PCART||e.key===null)&&MODE==='pdv'){pcart=loadCart();pdvCart()}
+ /* o carrinho é relido mesmo com esta aba no painel: ao voltar ao PDV ela não ressuscita uma venda já finalizada em outra aba */
+ if(e.key===PCART||e.key===null){pcart=loadCart();if(MODE==='pdv')pdvCart()}
 });
 
 load();
