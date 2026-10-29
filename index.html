@@ -623,9 +623,49 @@ function load(){
  try{const old=localStorage.getItem(KEY);if(old)localStorage.setItem(KEY+'_recuperacao_'+Date.now(),old)}catch(e){}
  DB=seed();save();
 }
-function save(){DB.updated=Date.now();lsSet(KEY,DB)}
+function save(){DB.updated=Date.now();lsSet(KEY,DB);if(typeof sbQueue==='function')sbQueue()}
 /* transação: relê o estado mais novo (outra aba pode ter vendido), aplica e salva */
 function tx(fn){const fresh=rawLoad();if(fresh)DB=fresh;const r=fn(DB);save();return r}
+
+/* =====================================================================
+   SINCRONIZAÇÃO COM SUPABASE (todos os aparelhos veem os mesmos dados)
+   ===================================================================== */
+const SB_URL='https://obthlupzrlwdqdidqxto.supabase.co';      /* ex.: https://abcdxyz.supabase.co */
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9idGhsdXB6cmx3ZHFkaWRxeHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NDgyMzIsImV4cCI6MjEwODAyNDIzMn0.jKwruoCCR_7hWFl7GQptPJ9tGq_k_6Lne5O5Elo2f_E';  /* chave "anon public" */
+const SB_ON=!SB_URL.startsWith('COLE')&&!SB_KEY.startsWith('COLE');
+const SB_FLAG='bancada_sync_ok';
+let sbReady=false,sbTimer=null,sbBusy=false;
+const sbH={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'};
+async function sbGet(){
+ const r=await fetch(SB_URL+'/rest/v1/bancada_store?id=eq.main&select=data,updated',{headers:sbH,cache:'no-store'});
+ if(!r.ok)throw new Error('GET '+r.status);
+ const a=await r.json();return a[0]||null;
+}
+async function sbPush(){
+ if(!SB_ON||!sbReady||sbBusy)return;
+ sbBusy=true;
+ try{
+  const r=await fetch(SB_URL+'/rest/v1/bancada_store',{method:'POST',headers:Object.assign({Prefer:'resolution=merge-duplicates'},sbH),body:JSON.stringify({id:'main',data:DB,updated:DB.updated})});
+  if(!r.ok)throw new Error('POST '+r.status);
+ }catch(e){console.warn('Supabase: falha ao salvar',e);toast('Sem conexão com o servidor — salvo só neste aparelho','err')}
+ sbBusy=false;
+}
+function sbQueue(){if(!SB_ON||!sbReady)return;clearTimeout(sbTimer);sbTimer=setTimeout(sbPush,600)}
+async function sbSync(first){
+ if(!SB_ON)return;
+ try{
+  const rem=await sbGet(),known=localStorage.getItem(SB_FLAG)==='1';
+  if(!rem){sbReady=true;localStorage.setItem(SB_FLAG,'1');await sbPush();return}
+  const remNewer=!known||(+rem.updated>(+DB.updated||0));
+  if(remNewer&&fixDB(rem.data)){
+   if(!first&&modals.length){sbReady=true;return} /* não interrompe quem está num diálogo */
+   localStorage.setItem(KEY,JSON.stringify(rem.data));localStorage.setItem(SB_FLAG,'1');
+   sbReady=true;location.reload();return;
+  }
+  sbReady=true;localStorage.setItem(SB_FLAG,'1');
+  if((+DB.updated||0)>(+rem.updated||0))await sbPush();
+ }catch(e){console.warn('Supabase: falha ao sincronizar',e);sbReady=sbReady||false}
+}
 const prod=id=>DB.products.find(p=>p.id===id);
 const prod2=(db,id)=>db.products.find(p=>p.id===id);
 const byCode=c=>{c=String(c).trim();return DB.products.find(p=>p.code===c)||DB.products.find(p=>norm(p.code)===norm(c))};
@@ -1501,6 +1541,7 @@ window.addEventListener('storage',e=>{
 });
 
 load();
+sbSync(true);setInterval(()=>sbSync(false),15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sbSync(false)});
 window.addEventListener('hashchange',route);
 route();
 </script>
@@ -1509,76 +1550,6 @@ route();
    No arquivo index.html aberto no computador da oficina, tudo funciona. */
 printHTML=function(){toast('Para imprimir, use o arquivo index.html aberto no computador da oficina','y')};
 csv=function(){toast('Para exportar CSV, use o arquivo index.html aberto no computador da oficina','y')};
-</script>
-
-
-<script>
-/* ===== Sincronização dos PRODUTOS com o Supabase (tabela public.products) =====
-   O navegador continua usando o localStorage; o Supabase guarda uma cópia dos produtos
-   (cadastro, preço, custo, estoque) e a devolve ao abrir o sistema em outro computador. */
-(function(){
- const SB_URL='https://rvpfymftfnrnevcoadtc.supabase.co';
- const SB_KEY='sb_publishable_WPw0gHqQPNy1QbQXxuMlvg_nb-Xc6Jh';
- const T=SB_URL+'/rest/v1/products';
- const H={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'};
- let timer=null,busy=false,pulled=false,lastCodes=new Set(),warned=false;
- const warn=m=>{if(warned)return;warned=true;try{toast(m,'err')}catch(e){}};
- const toRemote=p=>({code:String(p.code),name:p.name,brand:p.brand||'',ref:p.ref||'',category:p.cat||'',application:p.app||'',
-  cost:+p.cost||0,price:+p.price||0,stock:+p.stock||0,min_stock:+p.min||0,is_service:!!p.service,updated_at:new Date().toISOString()});
- const toLocal=r=>({code:r.code,name:r.name,brand:r.brand||'',ref:r.ref||'',cat:r.category||'',app:r.application||'',
-  cost:+r.cost||0,price:+r.price||0,stock:+r.stock||0,min:+r.min_stock||0,service:!!r.is_service});
- async function fetchRemote(){
-  const r=await fetch(T+'?select=*&order=name.asc&limit=5000',{headers:H});
-  if(!r.ok)throw new Error('GET '+r.status);
-  return r.json();
- }
- async function push(){
-  if(busy||!pulled)return;busy=true;
-  try{
-   const list=DB.products.filter(p=>p.code&&p.name);
-   if(list.length){
-    const r=await fetch(T+'?on_conflict=code',{method:'POST',headers:{...H,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(list.map(toRemote))});
-    if(!r.ok)throw new Error('UPSERT '+r.status);
-    const keep=new Set(list.map(p=>String(p.code)));
-    const gone=[...lastCodes].filter(c=>!keep.has(c));
-    for(const c of gone){
-     const d=await fetch(T+'?code=eq.'+encodeURIComponent(c),{method:'DELETE',headers:H});
-     if(!d.ok)throw new Error('DELETE '+d.status);
-    }
-    lastCodes=keep;
-   }
-  }catch(e){console.warn('Supabase:',e);warn('Sem conexão com o Supabase — os produtos serão enviados quando voltar')}
-  busy=false;
- }
- function schedule(){clearTimeout(timer);timer=setTimeout(push,1500)}
- async function pull(){
-  try{
-   const rows=await fetchRemote();
-   const untouched=rows.length&&rows.every(r=>!+r.cost&&!+r.price&&!+r.stock);
-   const localUsed=DB.products.some(p=>+p.cost||+p.price||+p.stock);
-   if(!rows.length||(untouched&&localUsed)){
-    /* Supabase vazio ou ainda "virgem": o que está neste computador é o mais completo — envia */
-    pulled=true;lastCodes=new Set(rows.map(r=>String(r.code)));await push();return;
-   }
-   const byC=new Map(DB.products.map(p=>[String(p.code),p]));
-   rows.forEach(r=>{
-    const l=toLocal(r),x=byC.get(String(r.code));
-    if(x)Object.assign(x,l);else DB.products.push({id:'p'+uid(),...l});
-   });
-   const rc=new Set(rows.map(r=>String(r.code)));
-   lastCodes=rc;pulled=true;
-   lsSet(KEY,DB);              /* grava local sem disparar novo envio */
-   try{refresh()}catch(e){}
-   /* produtos que só existem aqui sobem na próxima gravação */
-   if(DB.products.some(p=>!rc.has(String(p.code))))schedule();
-  }catch(e){console.warn('Supabase:',e);warn('Não foi possível ler o Supabase — usando os dados deste computador')}
- }
- const _save=save;
- save=function(){_save();if(pulled)schedule()};
- window.sbSync=pull;
- pull();
- window.addEventListener('online',()=>{pulled?schedule():pull()});
-})();
 </script>
 
 </body></html>
