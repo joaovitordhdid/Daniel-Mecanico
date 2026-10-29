@@ -630,8 +630,8 @@ function tx(fn){const fresh=rawLoad();if(fresh)DB=fresh;const r=fn(DB);save();re
 /* =====================================================================
    SINCRONIZAÇÃO COM SUPABASE (todos os aparelhos veem os mesmos dados)
    ===================================================================== */
-const SB_URL='https://obthlupzrlwdqdidqxto.supabase.co';      /* ex.: https://abcdxyz.supabase.co */
-const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9idGhsdXB6cmx3ZHFkaWRxeHRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NDgyMzIsImV4cCI6MjEwODAyNDIzMn0.jKwruoCCR_7hWFl7GQptPJ9tGq_k_6Lne5O5Elo2f_E';  /* chave "anon public" */
+const SB_URL='https://pcdkenpczakwcjltozal.supabase.co';      /* ex.: https://abcdxyz.supabase.co */
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjZGtlbnBjemFrd2NqbHRvemFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzMDgwNzQsImV4cCI6MjEwODg4NDA3NH0.KXNrBl7D2JLWz1zUSqcqAdC9XFOoL5HUNX8jivDbka0';  /* chave "anon public" */
 const SB_ON=!SB_URL.startsWith('COLE')&&!SB_KEY.startsWith('COLE');
 const SB_FLAG='bancada_sync_ok';
 let sbReady=false,sbTimer=null,sbBusy=false;
