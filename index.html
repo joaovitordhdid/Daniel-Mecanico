@@ -1,11 +1,7 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <meta name="theme-color" content="#14323A">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20rx%3D%2211%22%20fill%3D%22%23F2B705%22/%3E%3Cg%20transform%3D%22translate%285%205%29%20scale%28.79%29%22%3E%3Cpath%20fill%3D%22%2314323A%22%20fill-rule%3D%22evenodd%22%20d%3D%22M40.72%2018.83%20L45.56%2019.63%20L45.56%2028.37%20L40.72%2029.17%20L39.48%2032.16%20L42.34%2036.16%20L36.16%2042.34%20L32.16%2039.48%20L29.17%2040.72%20L28.37%2045.56%20L19.63%2045.56%20L18.83%2040.72%20L15.84%2039.48%20L11.84%2042.34%20L5.66%2036.16%20L8.52%2032.16%20L7.28%2029.17%20L2.44%2028.37%20L2.44%2019.63%20L7.28%2018.83%20L8.52%2015.84%20L5.66%2011.84%20L11.84%205.66%20L15.84%208.52%20L18.83%207.28%20L19.63%202.44%20L28.37%202.44%20L29.17%207.28%20L32.16%208.52%20L36.16%205.66%20L42.34%2011.84%20L39.48%2015.84Z%20M35.5%2024%20a11.5%2011.5%200%201%200%20-23.0%200%20a11.5%2011.5%200%201%200%2023.0%200Z%22/%3E%3Cg%20transform%3D%22rotate%2845%2024%2024%29%22%3E%3Crect%20fill%3D%22%2314323A%22%20x%3D%2221.6%22%20y%3D%2219%22%20width%3D%224.8%22%20height%3D%2217.5%22%20rx%3D%222.4%22/%3E%3Ccircle%20fill%3D%22%2314323A%22%20cx%3D%2224%22%20cy%3D%2216.5%22%20r%3D%226.3%22/%3E%3Crect%20fill%3D%22%23F2B705%22%20x%3D%2221.9%22%20y%3D%228.5%22%20width%3D%224.2%22%20height%3D%228.2%22%20rx%3D%22.8%22/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
-<title>Boas Mãos Mecânica — PDV e Estoque</title>
+<title>Boas Mãos Mecânica</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
@@ -442,8 +438,6 @@ body.m-pdv{overflow:hidden}
   .noprint{display:none!important}
 }
 </style>
-</head>
-<body>
 <div id="app"></div>
 <div id="toasts"></div>
 <div id="print"></div>
@@ -1482,7 +1476,7 @@ function settingsModal(){
  <div class="foot"><button class="btn r" data-reset>Apagar tudo e recomeçar</button><button class="btn" data-bk>${I.down} Backup (JSON)</button><label class="btn" style="cursor:pointer">Restaurar backup<input type="file" accept=".json" hidden id="rbk"></label><span class="sp"></span><button class="btn y lg" data-ok>Salvar</button></div>`,{onEnter:()=>saveS()});
  const saveS=()=>{tx(db=>{Object.assign(db.settings,{store:$('#s1',el).value||'Boas Mãos Mecânica',whats:$('#s2',el).value,address:$('#s3',el).value,hours:$('#s4',el).value,pix:normPixKey($('#s5',el).value),pixName:$('#s6',el).value,pixCity:$('#s7',el).value,users:$('#s9',el).value.split(',').map(x=>x.trim()).filter(Boolean)});if(!db.settings.users.length)db.settings.users=['Balcão']});closeModal(el);toast('Configurações salvas','ok');refresh()};
  el.querySelector('[data-ok]').onclick=saveS;
- el.querySelector('[data-bk]').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));a.download='bancada-backup-'+today()+'.json';a.click()};
+ el.querySelector('[data-bk]').onclick=()=>toast('Para baixar o backup, use o arquivo index.html aberto no computador da oficina','y');
  $('#rbk',el).onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let d;
   try{d=fixDB(JSON.parse(await f.text()))}catch(err){d=null}
   if(!d)return toast('Arquivo de backup inválido','err');
@@ -1510,5 +1504,81 @@ load();
 window.addEventListener('hashchange',route);
 route();
 </script>
-</body>
-</html>
+<script>
+/* Versão hospedada: o navegador do site bloqueia impressão e downloads.
+   No arquivo index.html aberto no computador da oficina, tudo funciona. */
+printHTML=function(){toast('Para imprimir, use o arquivo index.html aberto no computador da oficina','y')};
+csv=function(){toast('Para exportar CSV, use o arquivo index.html aberto no computador da oficina','y')};
+</script>
+
+
+<script>
+/* ===== Sincronização dos PRODUTOS com o Supabase (tabela public.products) =====
+   O navegador continua usando o localStorage; o Supabase guarda uma cópia dos produtos
+   (cadastro, preço, custo, estoque) e a devolve ao abrir o sistema em outro computador. */
+(function(){
+ const SB_URL='https://rvpfymftfnrnevcoadtc.supabase.co';
+ const SB_KEY='sb_publishable_WPw0gHqQPNy1QbQXxuMlvg_nb-Xc6Jh';
+ const T=SB_URL+'/rest/v1/products';
+ const H={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'};
+ let timer=null,busy=false,pulled=false,lastCodes=new Set(),warned=false;
+ const warn=m=>{if(warned)return;warned=true;try{toast(m,'err')}catch(e){}};
+ const toRemote=p=>({code:String(p.code),name:p.name,brand:p.brand||'',ref:p.ref||'',category:p.cat||'',application:p.app||'',
+  cost:+p.cost||0,price:+p.price||0,stock:+p.stock||0,min_stock:+p.min||0,is_service:!!p.service,updated_at:new Date().toISOString()});
+ const toLocal=r=>({code:r.code,name:r.name,brand:r.brand||'',ref:r.ref||'',cat:r.category||'',app:r.application||'',
+  cost:+r.cost||0,price:+r.price||0,stock:+r.stock||0,min:+r.min_stock||0,service:!!r.is_service});
+ async function fetchRemote(){
+  const r=await fetch(T+'?select=*&order=name.asc&limit=5000',{headers:H});
+  if(!r.ok)throw new Error('GET '+r.status);
+  return r.json();
+ }
+ async function push(){
+  if(busy||!pulled)return;busy=true;
+  try{
+   const list=DB.products.filter(p=>p.code&&p.name);
+   if(list.length){
+    const r=await fetch(T+'?on_conflict=code',{method:'POST',headers:{...H,Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(list.map(toRemote))});
+    if(!r.ok)throw new Error('UPSERT '+r.status);
+    const keep=new Set(list.map(p=>String(p.code)));
+    const gone=[...lastCodes].filter(c=>!keep.has(c));
+    for(const c of gone){
+     const d=await fetch(T+'?code=eq.'+encodeURIComponent(c),{method:'DELETE',headers:H});
+     if(!d.ok)throw new Error('DELETE '+d.status);
+    }
+    lastCodes=keep;
+   }
+  }catch(e){console.warn('Supabase:',e);warn('Sem conexão com o Supabase — os produtos serão enviados quando voltar')}
+  busy=false;
+ }
+ function schedule(){clearTimeout(timer);timer=setTimeout(push,1500)}
+ async function pull(){
+  try{
+   const rows=await fetchRemote();
+   const untouched=rows.length&&rows.every(r=>!+r.cost&&!+r.price&&!+r.stock);
+   const localUsed=DB.products.some(p=>+p.cost||+p.price||+p.stock);
+   if(!rows.length||(untouched&&localUsed)){
+    /* Supabase vazio ou ainda "virgem": o que está neste computador é o mais completo — envia */
+    pulled=true;lastCodes=new Set(rows.map(r=>String(r.code)));await push();return;
+   }
+   const byC=new Map(DB.products.map(p=>[String(p.code),p]));
+   rows.forEach(r=>{
+    const l=toLocal(r),x=byC.get(String(r.code));
+    if(x)Object.assign(x,l);else DB.products.push({id:'p'+uid(),...l});
+   });
+   const rc=new Set(rows.map(r=>String(r.code)));
+   lastCodes=rc;pulled=true;
+   lsSet(KEY,DB);              /* grava local sem disparar novo envio */
+   try{refresh()}catch(e){}
+   /* produtos que só existem aqui sobem na próxima gravação */
+   if(DB.products.some(p=>!rc.has(String(p.code))))schedule();
+  }catch(e){console.warn('Supabase:',e);warn('Não foi possível ler o Supabase — usando os dados deste computador')}
+ }
+ const _save=save;
+ save=function(){_save();if(pulled)schedule()};
+ window.sbSync=pull;
+ pull();
+ window.addEventListener('online',()=>{pulled?schedule():pull()});
+})();
+</script>
+
+</body></html>
