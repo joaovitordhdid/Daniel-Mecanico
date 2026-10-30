@@ -538,7 +538,7 @@ function topBar(cur){
  <button class="cx" id="cxb" onclick="cashModal()"></button>
  <label class="op" title="Operador">${I.user}<select id="opsel" aria-label="Operador">${DB.settings.users.map(u=>`<option ${u===operator()?'selected':''}>${esc(u)}</option>`).join('')}</select></label>
  <button class="tb-ic tb-help" onclick="keysHelp()" title="Atalhos do teclado" aria-label="Atalhos do teclado">?</button>
- <button class="tb-ic" onclick="settingsModal()" title="Configurações" aria-label="Configurações">${I.gear}</button></div></header>`;
+ <button class="tb-ic" onclick="settingsModal()" title="Configurações" aria-label="Configurações">${I.gear}</button><button class="tb-ic" onclick="logout()" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button></div></header>`;
 }
 function topBarInit(){
  $('#opsel').onchange=e=>{localStorage.setItem(OPKEY,e.target.value);toast('Operador: '+esc(e.target.value))};
@@ -635,18 +635,68 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const SB_ON=!SB_URL.startsWith('COLE')&&!SB_KEY.startsWith('COLE');
 const SB_FLAG='bancada_sync_ok';
 let sbReady=false,sbTimer=null,sbBusy=false;
-const sbH={apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'};
+/* ===== LOGIN (Supabase Auth) — só o dono entra ===== */
+const AUTH_KEY='bancada_auth';
+let AUTH=null;try{AUTH=JSON.parse(localStorage.getItem(AUTH_KEY))}catch(e){}
+function authSave(a){AUTH=a;try{a?localStorage.setItem(AUTH_KEY,JSON.stringify(a)):localStorage.removeItem(AUTH_KEY)}catch(e){}}
+async function authCall(grant,body){
+ const r=await fetch(SB_URL+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw Object.assign(new Error(j.error_description||j.msg||j.message||('Erro '+r.status)),{status:r.status});
+ return {access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Date.now()+(+j.expires_in||3600)*1000,email:(j.user&&j.user.email)||''};
+}
+async function authToken(){
+ if(!AUTH)return null;
+ if(Date.now()<AUTH.expires_at-60000)return AUTH.access_token;
+ try{authSave(await authCall('refresh_token',{refresh_token:AUTH.refresh_token}));return AUTH.access_token}
+ catch(e){if(e.status>=400&&e.status<500){authExpired()}return null} /* sem internet: mantém a sessão e tenta depois */
+}
+function authExpired(){authSave(null);showLogin()}
+function logout(){authSave(null);location.reload()}
+async function sbHeaders(extra){
+ const t=await authToken();if(!t)throw new Error('sem login');
+ return Object.assign({apikey:SB_KEY,Authorization:'Bearer '+t,'Content-Type':'application/json'},extra||{});
+}
+function showLogin(){
+ if(document.getElementById('login'))return;
+ const d=document.createElement('div');d.id='login';
+ d.setAttribute('style','position:fixed;inset:0;z-index:99999;background:#14323A;display:flex;align-items:center;justify-content:center;padding:20px;font-family:Barlow,system-ui,sans-serif');
+ d.innerHTML='<form id="lgf" autocomplete="on" style="background:#fff;border-radius:16px;padding:26px 22px;width:100%;max-width:360px;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
+ +'<div style="font:800 26px/1.1 \'Barlow Condensed\',Barlow,sans-serif;color:#14323A;letter-spacing:.3px">Boas Mãos Mecânica</div>'
+ +'<div style="color:#5b696c;margin:6px 0 18px">Entre para acessar o estoque</div>'
+ +'<label style="display:block;font-weight:700;color:#14323A;margin-bottom:4px">E-mail</label>'
+ +'<input id="lge" type="email" name="username" autocomplete="username" required style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #d5d9d4;border-radius:10px;font-size:16px;margin-bottom:12px">'
+ +'<label style="display:block;font-weight:700;color:#14323A;margin-bottom:4px">Senha</label>'
+ +'<input id="lgp" type="password" name="password" autocomplete="current-password" required style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #d5d9d4;border-radius:10px;font-size:16px;margin-bottom:14px">'
+ +'<div id="lgm" style="color:#C62828;font-weight:600;min-height:20px;margin-bottom:8px"></div>'
+ +'<button id="lgb" type="submit" style="width:100%;padding:13px;border:0;border-radius:10px;background:#F2B705;color:#14323A;font:800 17px Barlow,sans-serif;cursor:pointer">Entrar</button></form>';
+ d.addEventListener('keydown',e=>e.stopPropagation());
+ document.body.appendChild(d);
+ const f=d.querySelector('#lgf'),m=d.querySelector('#lgm'),b=d.querySelector('#lgb');
+ f.onsubmit=async ev=>{
+  ev.preventDefault();m.textContent='';b.disabled=true;b.textContent='Entrando…';
+  try{
+   authSave(await authCall('password',{email:d.querySelector('#lge').value.trim(),password:d.querySelector('#lgp').value}));
+   d.remove();
+   if(!booted)boot();else sbSync(true);
+  }catch(e){
+   m.textContent=(e.status===400||e.status===401)?'E-mail ou senha incorretos':(e.message==='Failed to fetch'?'Sem internet — tente de novo':e.message);
+   b.disabled=false;b.textContent='Entrar';
+  }
+ };
+ setTimeout(()=>{const x=d.querySelector('#lge');x&&x.focus()},50);
+}
 async function sbGet(){
- const r=await fetch(SB_URL+'/rest/v1/bancada_store?id=eq.main&select=data,updated',{headers:sbH,cache:'no-store'});
- if(!r.ok)throw new Error('GET '+r.status);
+ const r=await fetch(SB_URL+'/rest/v1/bancada_store?id=eq.main&select=data,updated',{headers:await sbHeaders(),cache:'no-store'});
+ if(r.status===401||r.status===403)authExpired();if(!r.ok)throw new Error('GET '+r.status);
  const a=await r.json();return a[0]||null;
 }
 async function sbPush(){
  if(!SB_ON||!sbReady||sbBusy)return;
  sbBusy=true;
  try{
-  const r=await fetch(SB_URL+'/rest/v1/bancada_store',{method:'POST',headers:Object.assign({Prefer:'resolution=merge-duplicates'},sbH),body:JSON.stringify({id:'main',data:DB,updated:DB.updated})});
-  if(!r.ok)throw new Error('POST '+r.status);
+  const r=await fetch(SB_URL+'/rest/v1/bancada_store',{method:'POST',headers:await sbHeaders({Prefer:'resolution=merge-duplicates'}),body:JSON.stringify({id:'main',data:DB,updated:DB.updated})});
+  if(r.status===401||r.status===403)authExpired();if(!r.ok)throw new Error('POST '+r.status);
  }catch(e){console.warn('Supabase: falha ao salvar',e);toast('Sem conexão com o servidor — salvo só neste aparelho','err')}
  sbBusy=false;
 }
@@ -1540,10 +1590,15 @@ window.addEventListener('storage',e=>{
  if(e.key===PCART||e.key===null){pcart=loadCart();if(MODE==='pdv')pdvCart()}
 });
 
-load();
-sbSync(true);setInterval(()=>sbSync(false),15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sbSync(false)});
-window.addEventListener('hashchange',route);
-route();
+let booted=false;
+function boot(){
+ if(booted)return;booted=true;
+ load();
+ sbSync(true);setInterval(()=>sbSync(false),15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)sbSync(false)});
+ window.addEventListener('hashchange',route);
+ route();
+}
+if(AUTH)boot();else showLogin();
 </script>
 <script>
 /* Versão hospedada: o navegador do site bloqueia impressão e downloads.
