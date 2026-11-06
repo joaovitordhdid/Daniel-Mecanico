@@ -318,6 +318,23 @@ body.m-pdv{overflow:hidden}
 .pmain>*,.dgrid>*,.co>*,.kan>*,.grid2>*,.pleft>*{min-width:0}
 .flash{animation:fl .6s}
 @keyframes fl{0%{background:#ffe9a0}}
+.osbar{display:flex;align-items:center;gap:8px;margin:0 10px 6px;padding:7px 10px;border-radius:10px;background:var(--y3);border:1.5px solid #e9cf72;font-size:13.5px}
+.osbar svg.i{width:18px;height:18px;flex:none}
+.osbar span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pt .s.rz{background:var(--y3);color:#6e5200}
+.cbadge.os{background:var(--y);color:var(--g)}
+.oslist{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(min(100%,370px),1fr))}
+.oscard{background:#fff;border-radius:14px;box-shadow:var(--sh);border:1px solid rgba(20,50,58,.07);border-left:5px solid var(--y);padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.oscard.cur{border-left-color:var(--ok)}
+.osh{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.osn{font-size:16px;display:block;overflow-wrap:anywhere}
+.ost{font-family:"Barlow Condensed";font-weight:800;font-size:24px;white-space:nowrap}
+.osi{list-style:none;margin:2px 0;padding:0;font-size:13.5px}
+.osi li{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px dashed var(--line2)}
+.osi li:last-child{border-bottom:0}
+.osi .np{font-size:11px;font-weight:800;color:var(--red)}
+.osnote{font-size:13px;background:var(--soft);border-radius:8px;padding:6px 8px;overflow-wrap:anywhere}
+.osa{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
 .maqbox{background:linear-gradient(135deg,#fff8dc,#fff1c2);border:1.5px solid #e9cf72;border-radius:14px;padding:12px 14px;margin-bottom:6px}
 .maqv{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .maqv span{font-weight:800;text-transform:uppercase;font-size:12.5px;letter-spacing:.05em;color:#6e5200}
@@ -533,12 +550,12 @@ const ART='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICA
 const ARTURL=(()=>{try{const b=atob(ART.slice(ART.indexOf(',')+1)),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return URL.createObjectURL(new Blob([u],{type:'image/jpeg'}))}catch(e){return ART}})();
 const artBtn=()=>`<button type="button" class="tb-art" onclick="artModal()" title="Ver a arte da oficina" aria-label="Ver a arte da oficina"><img src="${ARTURL}" alt=""></button>`;
 /* ---------- barra superior única: arte + loja · Vender/Estoque/Vendas/Caixa/Resumo · caixa, operador, ?, ⚙ ---------- */
-const NAV=[['pdv','Vender','cart','#/pdv'],['estoque','Estoque','box','#/painel/estoque'],['vendas','Vendas','cash','#/painel/vendas'],['caixa','Caixa','pdv','#/painel/caixa'],['painel','Resumo','chart','#/painel/painel']];
+const NAV=[['pdv','Vender','cart','#/pdv'],['estoque','Estoque','box','#/painel/estoque'],['abertos','Em aberto','doc','#/painel/abertos'],['vendas','Vendas','cash','#/painel/vendas'],['caixa','Caixa','pdv','#/painel/caixa'],['painel','Resumo','chart','#/painel/painel']];
 const lowBadge=n=>n?`<span class="cbadge" title="${n} produto(s) com estoque baixo">${n}</span>`:'';
 function topBar(cur){
  const low=DB.products.filter(isLow).length;
  return `<header class="tb"><div class="tb-in">${artBtn()}<a class="nm" href="#/pdv" title="Ir para Vender">${esc(DB.settings.store)}</a>
- <nav class="tnav" aria-label="Telas do sistema">${NAV.map(([k,l,ic,h])=>`<a href="${h}" data-k="${k}" class="${cur===k?'on':''}"${cur===k?' aria-current="page"':''}${k==='pdv'?' title="Vender (F2)"':''}>${I[ic]}<span>${l}</span>${k==='estoque'?lowBadge(low):''}</a>`).join('')}</nav>
+ <nav class="tnav" aria-label="Telas do sistema">${NAV.map(([k,l,ic,h])=>`<a href="${h}" data-k="${k}" class="${cur===k?'on':''}"${cur===k?' aria-current="page"':''}${k==='pdv'?' title="Vender (F2)"':''}>${I[ic]}<span>${l}</span>${k==='estoque'?lowBadge(low):''}${k==='abertos'&&DB.saved.length?`<span class="cbadge os" title="${DB.saved.length} venda(s) em aberto">${DB.saved.length}</span>`:''}</a>`).join('')}</nav>
  <span class="sp"></span><span class="net" id="net"></span>
  <button class="cx" id="cxb" onclick="cashModal()"></button>
  <label class="op" title="Operador">${I.user}<select id="opsel" aria-label="Operador">${DB.settings.users.map(u=>`<option ${u===operator()?'selected':''}>${esc(u)}</option>`).join('')}</select></label>
@@ -550,7 +567,7 @@ function topBarInit(){
  pdvHeader();netStatus();
 }
 function keysHelp(){
- const K=[['F2','Ir para a busca de produtos (de qualquer tela)'],['↓ ↑','Com texto na busca: destacar produto na lista'],['Enter','Adicionar o produto destacado, o código bipado ou o resultado único'],['3*código','Adicionar 3 unidades de uma vez'],['↑ ↓','Com a busca vazia: escolher o item da venda'],['+ −','Aumentar / diminuir a quantidade do item escolhido'],['Del','Remover o item escolhido'],['F4','Finalizar venda'],['F6','Ler código com a câmera'],['F8','Limpar a venda'],['Esc','Limpar a busca / fechar janela'],['1–4','No pagamento: Pix, Dinheiro, Débito, Crédito']];
+ const K=[['F7','Salvar a venda para finalizar depois (carro na oficina)'],['F2','Ir para a busca de produtos (de qualquer tela)'],['↓ ↑','Com texto na busca: destacar produto na lista'],['Enter','Adicionar o produto destacado, o código bipado ou o resultado único'],['3*código','Adicionar 3 unidades de uma vez'],['↑ ↓','Com a busca vazia: escolher o item da venda'],['+ −','Aumentar / diminuir a quantidade do item escolhido'],['Del','Remover o item escolhido'],['F4','Finalizar venda'],['F6','Ler código com a câmera'],['F8','Limpar a venda'],['Esc','Limpar a busca / fechar janela'],['1–4','No pagamento: Pix, Dinheiro, Débito, Crédito']];
  modal(`<h2 class="h">Atalhos do teclado</h2><dl class="keys">${K.map(([k,d])=>`<dt><kbd>${k}</kbd></dt><dd>${d}</dd>`).join('')}</dl>`);
 }
 function artModal(){modal(`<img src="${ARTURL}" alt="Arte da oficina: mecânico encostado no carro — Mecânica, qualidade e confiança para o seu carro">`,{cls:'artmd'})}
@@ -612,7 +629,7 @@ const DEF_SETTINGS={store:'Boas Mãos Mecânica',whats:'',address:'Conjunto Jard
 /* valida e completa campos ausentes (backups / versões anteriores) sem descartar nada */
 function fixDB(db){
  if(!db||typeof db!=='object'||db.v!==2||!Array.isArray(db.products))return null;
- ['movements','orders','payments','cash','nfs'].forEach(k=>{if(!Array.isArray(db[k]))db[k]=[]});
+ ['movements','orders','payments','cash','nfs','saved'].forEach(k=>{if(!Array.isArray(db[k]))db[k]=[]});
  db.seq=Math.max(0,+db.seq||0);
  db.settings=Object.assign({},DEF_SETTINGS,db.settings||{});
  if(!Array.isArray(db.settings.users)||!db.settings.users.length)db.settings.users=['Balcão'];
@@ -725,6 +742,9 @@ const prod=id=>DB.products.find(p=>p.id===id);
 const prod2=(db,id)=>db.products.find(p=>p.id===id);
 const byCode=c=>{c=String(c).trim();return DB.products.find(p=>p.code===c)||DB.products.find(p=>norm(p.code)===norm(c))};
 const isLow=p=>!p.service&&p.stock<=p.min;
+/* quantidade reservada em vendas em aberto (carros na oficina), menos a que está aberta no caixa agora */
+const reservedQ=(db,pid,except)=>(db.saved||[]).reduce((s,v)=>v.id===except?s:s+v.items.filter(i=>i.pid===pid).reduce((a,i)=>a+i.qty,0),0);
+const availQ=(p,db=DB,except=pcart&&pcart.osId)=>p.service?Infinity:p.stock-reservedQ(db,p.id,except);
 const nextNum=db=>'#'+pad(++db.seq,5);
 const openCash=()=>DB.cash.find(c=>c.status==='aberto');
 const operator=()=>{const u=localStorage.getItem(OPKEY),us=DB.settings.users;return us.includes(u)?u:us[0]};
@@ -733,7 +753,7 @@ function seed(empty){
  /* sistema recém-criado: sem vendas, sem histórico. Só os produtos cadastrados pelo dono. */
  const db={v:2,seq:0,updated:Date.now(),
   settings:{store:'Boas Mãos Mecânica',whats:'',address:'Conjunto Jardim — N. Sra. do Socorro/SE',hours:'',pix:'',pixName:'BOAS MAOS MECANICA',pixCity:'N S DO SOCORRO',users:['Balcão']},
-  products:[],movements:[],orders:[],payments:[],cash:[],nfs:[]};
+  products:[],movements:[],orders:[],payments:[],cash:[],nfs:[],saved:[]};
  if(!empty)db.products.push(
   {id:'p1',code:'7898564680492',name:'Homocinética 22×22 dentes',brand:'Motoraço',ref:'MA1355-499A',cat:'transmissao',
    app:'GM Corsa 1.0/1.4/1.6 94>, Classic 1.0/1.4 94>, Montana 1.8 8V 04> — todos com eixo Delphi',cost:0,price:0,stock:0,min:1},
@@ -808,6 +828,7 @@ function receiptHTML(o){
  const s=DB.settings,ld=lineDisc(o),gd=r2((o.discount||0)-ld);
  return `<div class="rcpt"><div class="c"><span class="rlogo">${LOGO}</span><b style="font-size:16px">${esc(s.store.toUpperCase())}</b><br>${esc(s.address)}<br>WhatsApp ${esc(s.whats)}</div><hr>
  <div class="c"><b>CUPOM NÃO FISCAL ${esc(o.num)}</b><br>${fdt(o.ts)} · ${esc(o.seller||'')}</div><hr>
+ ${o.customer&&o.customer.name?`<div class="l"><span>Cliente</span><span>${esc(o.customer.name)}</span></div>${o.customer.car?`<div class="l"><span>Carro</span><span>${esc(o.customer.car)}</span></div>`:''}<hr>`:''}
  ${o.items.map(i=>`<div>${esc(i.name)}</div><div class="l"><span>${i.qty} x ${m2s(i.price)}${i.disc?` (-${m2s(i.disc)})`:''}</span><span>${m2s(i.price*i.qty-(i.disc||0))}</span></div>`).join('')}
  <hr><div class="l"><span>Subtotal</span><span>${m2s(o.subtotal-ld)}</span></div>
  ${gd>0?`<div class="l"><span>Desconto</span><span>-${m2s(gd)}</span></div>`:''}
@@ -818,7 +839,7 @@ function receiptHTML(o){
  <hr><div class="c">Obrigado pela preferência!<br>Volte sempre 🔧</div></div>`;
 }
 function receiptText(o){
- const s=DB.settings,gd=r2((o.discount||0)-lineDisc(o));let t=`*${s.store.toUpperCase()}* — Comprovante ${o.num}\n${fdt(o.ts)}\n\n`;
+ const s=DB.settings,gd=r2((o.discount||0)-lineDisc(o));let t=`*${s.store.toUpperCase()}* — Comprovante ${o.num}\n${fdt(o.ts)}\n${o.customer&&o.customer.name?`Cliente: ${o.customer.name}${o.customer.car?' · '+o.customer.car:''}\n`:''}\n`;
  o.items.forEach(i=>t+=`${i.qty}x ${i.name} — ${fmt(i.price*i.qty-(i.disc||0))}\n`);
  if(gd>0)t+=`Desconto: -${fmt(gd)}\n`;
  t+=`\n*Total: ${fmt(o.total)}*\nPagamento: ${ML[o.method]}${o.installments>1?' '+o.installments+'x':''}\n`;
@@ -1007,8 +1028,9 @@ function renderPDV(){
   <div class="pfil"><div class="chips" id="pcats"></div><span class="pcount" id="pcount"></span></div>
   <div class="pg" id="pg"></div></section>
  <aside class="pright" aria-label="Venda atual"><div class="chd">${I.cart}<h3 class="h" style="margin:0">Venda atual</h3><span class="sp"></span><span class="pill" id="pn">0 itens</span></div>
+  <div class="osbar" id="osbar" hidden></div>
   <div class="clines" id="cl"></div>
-  <div class="cact"><button class="btn" onclick="pdvDiscount()" title="Desconto no item escolhido ou no total">${I.pct} Desconto</button><span class="sp"></span><button class="btn" onclick="pdvClear()" title="Limpar a venda (F8)">${I.trash} Limpar <kbd>F8</kbd></button></div>
+  <div class="cact"><button class="btn" onclick="pdvDiscount()" title="Desconto no item escolhido ou no total">${I.pct} Desconto</button><button class="btn" id="osb" onclick="osSave()" title="Salvar para finalizar depois — carro na oficina (F7)">${I.doc} Salvar <kbd>F7</kbd></button><span class="sp"></span><button class="btn" onclick="pdvClear()" title="Limpar a venda (F8)">${I.trash} Limpar <kbd>F8</kbd></button></div>
   <div class="ctot" id="ct"></div><div class="fin"><button class="btn y finb" id="finb" onclick="pdvFinish()">Finalizar venda <kbd>F4</kbd></button></div></aside></div></div>`;
  topBarInit();
  const ps=$('#ps'),g=$('#pg');
@@ -1056,7 +1078,7 @@ function pdvGrid(){
  pdvList=list;if(pdvHi>=list.length)pdvHi=list.length-1;
  const cnt=$('#pcount'),tot=DB.products.length;if(cnt)cnt.textContent=list.length===tot?`${tot} ${tot===1?'produto':'produtos'}`:`${list.length} de ${tot} produtos`;
  g.innerHTML=list.length?list.map((p,i)=>{const sub=[p.brand,p.ref].filter(Boolean).join(' · ');
-  return `<button type="button" class="pt ${p.service?'svc':''} ${isLow(p)?'low':''} ${!p.service&&p.stock<=0?'out':''} ${i===pdvHi?'hi':''}" data-i="${i}" onclick="pdvAdd('${p.id}')">${thumb(p)}<span class="pi"><span class="l1"><span class="n" title="${esc(p.name)}">${esc(p.name)}</span>${sub?`<small class="mb">${esc(sub)}</small>`:''}</span><span class="ap" title="${esc(p.app||'')}">${esc(p.app||(p.service?'Serviço':'Cód. '+p.code))}</span></span>${p.service?'<span class="s">serviço</span>':`<span class="s">${p.stock<=0?'sem estoque':p.stock+' un'}</span>`}<span class="p">${p.price>0?fmt(p.price):'<span class="np">Sem preço</span>'}</span><span class="add" aria-hidden="true">${I.plus}</span></button>`}).join('')
+  return `<button type="button" class="pt ${p.service?'svc':''} ${isLow(p)?'low':''} ${!p.service&&availQ(p)<=0?'out':''} ${i===pdvHi?'hi':''}" data-i="${i}" onclick="pdvAdd('${p.id}')">${thumb(p)}<span class="pi"><span class="l1"><span class="n" title="${esc(p.name)}">${esc(p.name)}</span>${sub?`<small class="mb">${esc(sub)}</small>`:''}</span><span class="ap" title="${esc(p.app||'')}">${esc(p.app||(p.service?'Serviço':'Cód. '+p.code))}</span></span>${p.service?'<span class="s">serviço</span>':(()=>{const av=availQ(p),rv=p.stock-av;return rv>0?`<span class="s${av<=0?' rz':''}" title="${p.stock} em estoque · ${rv} reservada(s) em vendas em aberto">${av<=0?'reservado':Math.max(0,av)+' livre'+(av===1?'':'s')}</span>`:`<span class="s">${p.stock<=0?'sem estoque':p.stock+' un'}</span>`})()}<span class="p">${p.price>0?fmt(p.price):'<span class="np">Sem preço</span>'}</span><span class="add" aria-hidden="true">${I.plus}</span></button>`}).join('')
   :DB.products.length?emptyBox(I.search,'Nenhum produto encontrado',/^\d{6,}$/.test(pdvQ)?'Este código não está cadastrado. Cadastre o produto no estoque para vender pelo leitor.':'Tente outro nome, referência, marca ou carro.',`<a class="btn y" href="#/painel/estoque">${I.plus} Cadastrar produto</a>`,'box'):emptyBox(I.box,'Nenhum produto cadastrado','Cadastre seus produtos com código de barras e preço para começar a vender.',`<a class="btn y" href="#/painel/estoque">${I.plus} Cadastrar produtos</a>`,'box');
 }
 function pdvHiSet(i){
@@ -1067,6 +1089,8 @@ function pdvHiMove(d){const n=pdvList.length;if(!n)return;pdvHiSet(pdvHi<0?(d>0?
 function pdvAddHi(){const p=pdvList[pdvHi],ps=$('#ps');if(!p)return;const m=ps.value.trim().match(/^(\d+)\*/);if(pdvAdd(p.id,m?+m[1]:1))clearPS()}
 function pdvCart(){
  const cl=$('#cl');if(!cl)return;const t=pdvTotals();
+ if(pcart.osId&&!DB.saved.some(v=>v.id===pcart.osId)){delete pcart.osId;delete pcart.osName;savePC()}   /* finalizada/excluída em outra aba */
+ const ob=$('#osbar');if(ob){ob.hidden=!pcart.osId;ob.innerHTML=pcart.osId?`${I.doc}<span>Em aberto: <b>${esc(pcart.osName||'')}</b></span><span class="sp"></span><button class="btn s" onclick="osSave()">Salvar alterações</button>`:''}
  cl.innerHTML=pcart.items.length?pcart.items.map(i=>{const p=prod(i.pid);return `<div class="ln ${pcart.sel===i.pid?'sel':''}" data-pid="${p.id}" onclick="pcart.sel='${p.id}';savePC();pdvCart()">
   <div class="a" title="${esc(p.name)}">${esc(p.name)}</div><div class="c">${fmt(p.price*i.qty-(i.disc||0))}</div>
   <div class="d"><div class="qty"><button onclick="event.stopPropagation();pdvSetQty('${p.id}',${i.qty-1})" aria-label="Diminuir">−</button><span>${i.qty}</span><button onclick="event.stopPropagation();pdvSetQty('${p.id}',${i.qty+1})" aria-label="Aumentar">+</button></div><span class="b">× ${fmt(p.price)}${i.disc?` · desc. −${fmt(i.disc)}`:''}${isLow(p)?' · <b style="color:var(--red)">estoque baixo</b>':''}</span><button class="btn ghost s" title="Remover item (Del)" aria-label="Remover item" onclick="event.stopPropagation();pdvSetQty('${p.id}',0)">${I.trash}</button></div></div>`}).join('')
@@ -1081,23 +1105,23 @@ function pdvAdd(pid,q=1){
  q=Math.floor(+q||0);if(q<1){beep(false);toast('Quantidade inválida','err');return false}
  const it=pcart.items.find(i=>i.pid===pid),cur=it?it.qty:0;
  if(!(p.price>0)){beep(false);toast(`${esc(p.name)} está sem preço. Defina em Estoque → Editar.`,'err');return false}
- if(!p.service&&cur+q>p.stock){beep(false);toast(p.stock<=0?`${esc(p.name)}: SEM ESTOQUE`:`Estoque insuficiente: ${p.stock} un de ${esc(p.name)}`,'err');return false}
+ const av=availQ(p);if(!p.service&&cur+q>av){beep(false);toast(p.stock<=0?`${esc(p.name)}: SEM ESTOQUE`:av<p.stock?(av<=0?`${esc(p.name)}: todas as ${p.stock} un estão reservadas em vendas em aberto`:`Só ${av} un livre(s) de ${esc(p.name)} — ${p.stock-av} reservada(s) em vendas em aberto`):`Estoque insuficiente: ${p.stock} un de ${esc(p.name)}`,'err');return false}
  if(it)it.qty+=q;else pcart.items.push({pid,qty:q,disc:0});
  pcart.sel=pid;savePC();pdvCart();beep(true);
  const ln=$(`.ln[data-pid="${pid}"]`);if(ln){ln.classList.remove('flash');void ln.offsetWidth;ln.classList.add('flash')}
- const left=p.stock-cur-q;if(!p.service&&left<=p.min)toast(`⚠ ${esc(p.name)}: estoque baixo (restam ${left} un após esta venda)`,'y');
+ const left=(p.service?0:av)-cur-q;if(!p.service&&left<=p.min)toast(`⚠ ${esc(p.name)}: estoque baixo (restam ${left} un após esta venda)`,'y');
  return true;
 }
 function pdvSetQty(pid,q){
  const it=pcart.items.find(i=>i.pid===pid);if(!it)return;const p=prod(pid);q=Math.floor(+q||0);
  if(q<=0||!p){pcart.items=pcart.items.filter(i=>i!==it);if(pcart.sel===pid)pcart.sel=pcart.items.length?pcart.items[pcart.items.length-1].pid:null}
- else{if(!p.service&&q>p.stock){beep(false);return toast(`Só há ${p.stock} un de ${esc(p.name)} em estoque`,'err')}it.qty=q;it.disc=Math.min(it.disc||0,r2(p.price*q))}
+ else{const av=availQ(p);if(!p.service&&q>av){beep(false);return toast(av<p.stock?(av<=0?`${esc(p.name)}: todas as unidades estão reservadas em vendas em aberto`:`Só ${av} un livre(s) de ${esc(p.name)} — o resto está reservado em vendas em aberto`):`Só há ${p.stock} un de ${esc(p.name)} em estoque`,'err')}it.qty=q;it.disc=Math.min(it.disc||0,r2(p.price*q))}
  savePC();pdvCart();
 }
 function pdvQty(d){const pid=selPid();if(!pid)return;const it=pcart.items.find(i=>i.pid===pid);pcart.sel=pid;pdvSetQty(pid,it.qty+d)}
 function pdvRemove(){const pid=selPid();if(pid)pdvSetQty(pid,0)}
 function pdvMoveSel(d){if(!pcart.items.length)return;let i=pcart.items.findIndex(x=>x.pid===pcart.sel);i=Math.max(0,Math.min(pcart.items.length-1,(i<0?pcart.items.length:i)+d));pcart.sel=pcart.items[i].pid;savePC();pdvCart()}
-async function pdvClear(){if(!pcart.items.length)return toast('A venda já está vazia');if(await confirmBox('Limpar todos os itens da venda atual?','Limpar','r')){pcart=emptyCart();savePC();pdvCart()}}
+async function pdvClear(){if(!pcart.items.length&&!pcart.osId)return toast('A venda já está vazia');if(await confirmBox(pcart.osId?`Tirar <b>${esc(pcart.osName||'')}</b> do caixa? A venda em aberto continua salva na aba Em aberto.`:'Limpar todos os itens da venda atual?','Limpar','r')){pcart=emptyCart();savePC();pdvCart();pdvGrid()}}
 /* Enter na busca: código exato (aceita "3*código") ou resultado único da busca */
 function pdvEnter(v){
  v=v.trim();if(!v)return;let q=1;const m=v.match(/^(\d+)\*(.+)$/);if(m){q=+m[1];v=m[2].trim()}
@@ -1148,11 +1172,13 @@ function finalizeSale(pay){
   if(!pcart.items.length){err='A venda está vazia';return null}
   for(const i of pcart.items){const p=prod2(db,i.pid);if(!p){err='Um produto da venda foi removido do cadastro';return null}
    if(!(p.price>0)){err=`${esc(p.name)} está sem preço`;return null}
-   if(!p.service&&p.stock<i.qty){err=`Estoque mudou: só ${p.stock} un de ${esc(p.name)}`;return null}}
+   const av=p.service?Infinity:p.stock-reservedQ(db,p.id,pcart.osId);if(!p.service&&av<i.qty){err=av<p.stock?`Só ${Math.max(0,av)} un livre(s) de ${esc(p.name)} (o resto está reservado em vendas em aberto)`:`Estoque mudou: só ${p.stock} un de ${esc(p.name)}`;return null}}
   const t=pdvTotals();   /* recalculado com os preços do estado mais novo (tx já recarregou o DB) */
   if(Math.abs(t.total-pay.total)>0.004){err=`O total mudou para ${fmt(t.total)} (preço alterado em outra aba). Confira e finalize de novo.`;return null}
   const items=pcart.items.map(i=>{const p=prod2(db,i.pid);return{pid:p.id,code:p.code,name:p.name,qty:i.qty,price:p.price,cost:p.cost||0,disc:r2(Math.min(i.disc||0,p.price*i.qty)),service:!!p.service}});
-  const o={id:uid(),num:nextNum(db),ts:Date.now(),channel:'PDV',items,subtotal:t.sub,discount:t.disc,total:t.total,method:pay.method,paid:true,status:'entregue',seller:user,cashId:cash.id,customer:pay.customer||{}};
+  const os=pcart.osId?db.saved.find(v=>v.id===pcart.osId):null;
+  const o={id:uid(),num:nextNum(db),ts:Date.now(),channel:'PDV',items,subtotal:t.sub,discount:t.disc,total:t.total,method:pay.method,paid:true,status:'entregue',seller:user,cashId:cash.id,customer:os?{name:os.name,phone:os.phone||'',car:os.car||''}:(pay.customer||{})};
+  if(os){o.osId=os.id;if(os.note)o.note=os.note;db.saved=db.saved.filter(v=>v.id!==os.id)}
   if(o.paid)o.paidTs=o.ts;if(pay.method==='dinheiro'){o.received=pay.received;o.change=pay.change}if(pay.installments)o.installments=pay.installments;if(pay.auth)o.auth=pay.auth;
   items.forEach(i=>mov(db,i.pid,-i.qty,'venda',o.num,'PDV',user));
   db.orders.push(o);
@@ -1163,6 +1189,77 @@ function finalizeSale(pay){
  pcart=emptyCart();savePC();clearPS();pdvGrid();pdvCart();pdvHeader();
  showReceipt(o,'Venda finalizada');
 }
+/* ---------- vendas em aberto (carro na oficina: salva as peças e finaliza quando o cliente vier) ---------- */
+function osTotal(v){let t=0,np=0;v.items.forEach(i=>{const p=prod(i.pid);if(!p)return;if(!(p.price>0))np++;t+=p.price*i.qty-Math.min(i.disc||0,p.price*i.qty)});t=r2(t);const d=v.disc||{type:'R$',v:0},g=r2(Math.min(t,d.type==='%'?t*Math.min(+d.v||0,100)/100:(+d.v||0)));return{total:r2(t-g),np}}
+function osSave(){
+ if(!pcart.items.length)return toast('Adicione as peças antes de salvar','err');
+ const cur=pcart.osId?DB.saved.find(v=>v.id===pcart.osId):null;let done=false;
+ const el=modal(`<h2 class="h">${cur?'Salvar alterações':'Salvar venda em aberto'}</h2>
+  <p class="mut sm" style="margin-top:-6px">Fica na aba <b>Em aberto</b>. As peças ficam reservadas para este carro; o estoque só baixa quando você finalizar a venda.</p>
+  <label class="f">Nome do cliente ou do carro *</label><input class="input" id="osn" maxlength="60" value="${esc(cur?cur.name:'')}" placeholder="Ex.: Seu Zé — Gol prata" autofocus>
+  <div class="grid2"><div><label class="f">Carro / placa</label><input class="input" id="osc" maxlength="40" value="${esc(cur?cur.car||'':'')}" placeholder="Ex.: Gol 1.0 · ABC1D23"></div>
+  <div><label class="f">Telefone / WhatsApp</label><input class="input" id="osp" inputmode="tel" maxlength="20" value="${esc(cur?cur.phone||'':'')}" placeholder="(79) 99999-9999"></div></div>
+  <label class="f">Observação</label><textarea class="input" id="oso" maxlength="300" placeholder="Ex.: trocar pastilha e fluido; cliente volta às 17h">${esc(cur?cur.note||'':'')}</textarea>
+  <div class="foot"><button class="btn y lg" data-ok>${I.doc} ${cur?'Salvar alterações':'Salvar'}</button></div>`,{onEnter:()=>go()});
+ function go(){
+  if(done)return;const name=$('#osn',el).value.trim();if(!name){$('#osn',el).focus();return toast('Informe o nome do cliente ou do carro','err')}
+  const d={name,car:$('#osc',el).value.trim(),phone:$('#osp',el).value.trim(),note:$('#oso',el).value.trim()};
+  let err='',sv=null;
+  tx(db=>{
+   const id=pcart.osId&&db.saved.some(v=>v.id===pcart.osId)?pcart.osId:null;
+   for(const i of pcart.items){const p=prod2(db,i.pid);if(!p){err='Um produto da venda foi removido do cadastro';return}
+    if(!p.service&&p.stock-reservedQ(db,p.id,id)<i.qty){err=`Só ${Math.max(0,p.stock-reservedQ(db,p.id,id))} un livre(s) de ${esc(p.name)}`;return}}
+   const items=pcart.items.map(i=>({pid:i.pid,qty:i.qty,disc:r2(i.disc||0)})),now=Date.now();
+   if(id){sv=db.saved.find(v=>v.id===id);Object.assign(sv,d,{items,disc:{...pcart.disc},updatedTs:now,updatedBy:operator()})}
+   else{sv={id:'os'+uid(),...d,items,disc:{...pcart.disc},createdTs:now,updatedTs:now,user:operator()};db.saved.push(sv)}
+  });
+  if(err)return toast(err,'err');
+  done=true;closeModal(el);pcart=emptyCart();savePC();clearPS();pdvCart();pdvGrid();
+  const nb=document.querySelector('.tnav a[data-k="abertos"]');if(nb)refreshNavBadge();
+  toast(`Salvo em <b>Em aberto</b>: ${esc(sv.name)}`,'ok');
+ }
+ el.querySelector('[data-ok]').onclick=go;
+}
+function refreshNavBadge(){const a=document.querySelector('.tnav a[data-k="abertos"]');if(!a)return;let b=a.querySelector('.cbadge.os');const n=DB.saved.length;if(!n){if(b)b.remove();return}if(!b){b=document.createElement('span');b.className='cbadge os';a.appendChild(b)}b.textContent=n;b.title=n+' venda(s) em aberto'}
+async function osOpen(id){
+ const v=DB.saved.find(x=>x.id===id);if(!v)return toast('Esta venda em aberto não existe mais','err');
+ if(pcart.items.length&&pcart.osId!==id&&!await confirmBox(pcart.osId?`O caixa está com <b>${esc(pcart.osName||'')}</b> (salva). Trocar por <b>${esc(v.name)}</b>? Alterações não salvas se perdem.`:`O caixa tem uma venda com ${pcart.items.length} item(ns) que não foi salva. Trocar por <b>${esc(v.name)}</b>? A venda atual será descartada.`,'Trocar','r'))return;
+ const items=v.items.filter(i=>prod(i.pid)).map(i=>({pid:i.pid,qty:i.qty,disc:i.disc||0}));
+ if(items.length<v.items.length)toast('Algum produto desta venda foi excluído do cadastro e ficou de fora','y');
+ pcart={items,disc:{...(v.disc||{type:'R$',v:0})},sel:null,osId:v.id,osName:v.name};savePC();
+ if(MODE==='pdv'){pdvCart();pdvGrid();focusSearch()}else location.hash='#/pdv';
+ toast(`Aberta no caixa: ${esc(v.name)}`,'ok');
+}
+async function osDelete(id){
+ const v=DB.saved.find(x=>x.id===id);if(!v)return;
+ if(!await confirmBox(`Excluir a venda em aberto <b>${esc(v.name)}</b>? As peças reservadas voltam a ficar livres. Nada é cobrado nem baixado do estoque.`,'Excluir','r'))return;
+ tx(db=>{db.saved=db.saved.filter(x=>x.id!==id)});
+ if(pcart.osId===id){delete pcart.osId;delete pcart.osName;savePC()}
+ toast('Venda em aberto excluída');refresh();
+}
+function osWhats(id){
+ const v=DB.saved.find(x=>x.id===id);if(!v)return;const s=DB.settings,t=osTotal(v);
+ let m=`*${s.store}* — Orçamento\n${v.name}${v.car?' · '+v.car:''}\n\n`;
+ v.items.forEach(i=>{const p=prod(i.pid);if(p)m+=`${i.qty}x ${p.name}${p.ref?' ('+p.ref+')':''} — ${p.price>0?fmt(p.price*i.qty-(i.disc||0)):'a definir'}\n`});
+ m+=`\n*Total: ${fmt(t.total)}*${t.np?' (há itens sem preço)':''}\n${s.address||''}`;
+ window.open(waLink(v.phone,m),'_blank','noopener');
+}
+let osQ='';
+function tAbertos(){
+ const q=norm(osQ),list=DB.saved.filter(v=>!q||norm(v.name+' '+(v.car||'')+' '+(v.phone||'')+' '+(v.note||'')).includes(q)).sort((a,b)=>b.updatedTs-a.updatedTs);
+ const tot=r2(DB.saved.reduce((s,v)=>s+osTotal(v).total,0));
+ $('#adm').innerHTML=`<div class="dhead"><h2 class="h">Vendas em aberto</h2><span class="mut">${DB.saved.length?`${DB.saved.length} carro(s) aguardando · ${fmt(tot)} a receber`:'carros na oficina esperando o cliente pagar'}</span><span class="sp"></span><a class="btn y" href="#/pdv">${I.plus} Nova venda</a></div>
+ <div class="toolbar"><input class="input" id="osq" placeholder="Buscar por nome, carro, placa ou telefone" value="${esc(osQ)}"><span class="sp"></span><span class="mut sm">No caixa, monte as peças e clique em <b>Salvar</b> (F7).</span></div>
+ ${list.length?`<div class="oslist">${list.map(v=>{const t=osTotal(v),n=v.items.reduce((a,i)=>a+i.qty,0),cur=pcart.osId===v.id;return `<div class="oscard${cur?' cur':''}">
+  <div class="osh"><div style="min-width:0"><b class="osn">${esc(v.name)}</b>${v.car?`<div class="mut sm">${esc(v.car)}</div>`:''}</div><div class="ost">${fmt(t.total)}</div></div>
+  <div class="mut sm">${n} ${n===1?'peça':'peças'} · salvo ${fdt(v.updatedTs)}${v.user?' · '+esc(v.updatedBy||v.user):''}${v.phone?' · '+esc(v.phone):''}${cur?' · <b style="color:var(--ok)">aberta no caixa</b>':''}</div>
+  <ul class="osi">${v.items.slice(0,6).map(i=>{const p=prod(i.pid);return p?`<li><span>${i.qty}× ${esc(p.name)}${p.ref?` <small class="mut">${esc(p.ref)}</small>`:''}</span><span>${p.price>0?fmt(p.price*i.qty-Math.min(i.disc||0,p.price*i.qty)):'<span class="np">sem preço</span>'}</span></li>`:'<li class="mut">produto excluído</li>'}).join('')}${v.items.length>6?`<li class="mut">+ ${v.items.length-6} item(ns)</li>`:''}</ul>
+  ${v.note?`<div class="osnote">${esc(v.note)}</div>`:''}
+  <div class="osa"><button class="btn y" onclick="osOpen('${v.id}')">${I.cart} Abrir no caixa</button>${v.phone?`<button class="btn s" onclick="osWhats('${v.id}')" title="Mandar o orçamento pelo WhatsApp">${I.wa||''} WhatsApp</button>`:''}<span class="sp"></span><button class="btn s ghost" onclick="osDelete('${v.id}')" title="Excluir">${I.trash}</button></div></div>`}).join('')}</div>`
+  :emptyBox(I.doc,DB.saved.length?'Nenhuma venda encontrada':'Nenhuma venda em aberto',DB.saved.length?'Tente outro nome, carro ou placa.':'Chegou um carro? No caixa, coloque as peças que vai trocar e clique em <b>Salvar</b> (F7). Quando o cliente vier, abra aqui e finalize.',DB.saved.length?'':`<a class="btn y" href="#/pdv">${I.cart} Ir para o caixa</a>`,'box')}`;
+ const iq=$('#osq');iq.oninput=()=>{osQ=iq.value;const p=iq.selectionStart;tAbertos();const n=$('#osq');n.focus();n.setSelectionRange(p,p)};
+}
+
 /* ---------- caixa ---------- */
 function doOpenCash(amount){
  const user=operator();
@@ -1256,11 +1353,11 @@ window.addEventListener('offline',()=>{netStatus();toast('Sem internet — o PDV
    Setas na busca: com texto (ou produto já destacado) andam pela lista de produtos e Enter adiciona o destacado;
    com a busca vazia escolhem o item da venda (venda vazia: ↓ entra na lista). Fora do PDV, F2 vai para Vender.
                   Delete remove · Esc limpa a busca · leitor USB com foco fora da busca
-   F1/F3/F7 (ajuda, localizar, navegação por cursor) ficam bloqueadas no PDV; F5 recarrega normalmente
+   F7 salva a venda em aberto · F1/F3 (ajuda, localizar) ficam bloqueadas no PDV; F5 recarrega normalmente
    (o carrinho fica salvo).
    ===================================================================== */
-const PDV_FKEYS={F2:()=>focusSearch(),F4:()=>pdvFinish(),F6:()=>pdvCam(),F8:()=>pdvClear()};
-const BLOCKED_FKEYS=['F1','F3','F7'];
+const PDV_FKEYS={F2:()=>focusSearch(),F4:()=>pdvFinish(),F6:()=>pdvCam(),F7:()=>osSave(),F8:()=>pdvClear()};
+const BLOCKED_FKEYS=['F1','F3'];
 const isTyping=t=>!!t&&(t.tagName==='TEXTAREA'||t.isContentEditable||(t.tagName==='INPUT'&&!['checkbox','radio','button','submit','file','range','color'].includes(t.type)));
 const printable=e=>e.key.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey;
 /* leitor USB/teclado com o foco fora da busca: o 1º caractere vai para a busca e o resto já cai nela */
@@ -1303,13 +1400,13 @@ function pdvKey(e){
    PAINEL DA OFICINA
    ===================================================================== */
 let PTAB='painel',estView='produtos',estQ='',estLow=false,mvF={type:'',ch:'',q:''},venF={per:'7',m:''};
-const TABS=[['painel','Painel',I.chart],['estoque','Estoque',I.box],['vendas','Vendas',I.cash],['caixa','Caixa',I.pdv]];
+const TABS=[['painel','Painel',I.chart],['estoque','Estoque',I.box],['abertos','Em aberto',I.doc],['vendas','Vendas',I.cash],['caixa','Caixa',I.pdv]];
 function renderPainel(tab,soft){
  PTAB=TABS.some(t=>t[0]===tab)?tab:'painel';
  const sy=window.scrollY;
  $('#app').innerHTML=`${topBar(PTAB)}<main class="adm" id="adm"></main>`;
  topBarInit();
- ({painel:tDash,estoque:tEstoque,vendas:tVendas,caixa:tCaixa})[PTAB]();
+ ({painel:tDash,estoque:tEstoque,abertos:tAbertos,vendas:tVendas,caixa:tCaixa})[PTAB]();
  if(soft)window.scrollTo(0,sy);
 }
 function tDash(){
