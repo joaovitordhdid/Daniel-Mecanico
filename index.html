@@ -1723,7 +1723,7 @@ function settingsModal(){
  <div class="foot"><button class="btn r" data-reset>Apagar tudo e recomeçar</button><button class="btn" data-bk>${I.down} Backup (JSON)</button><label class="btn" style="cursor:pointer">Restaurar backup<input type="file" accept=".json" hidden id="rbk"></label><span class="sp"></span><button class="btn y lg" data-ok>Salvar</button></div>`,{onEnter:()=>saveS()});
  const saveS=()=>{tx(db=>{Object.assign(db.settings,{store:$('#s1',el).value||'Boas Mãos Mecânica',whats:$('#s2',el).value,address:$('#s3',el).value,hours:$('#s4',el).value,pix:normPixKey($('#s5',el).value),pixName:$('#s6',el).value,pixCity:$('#s7',el).value,users:$('#s9',el).value.split(',').map(x=>x.trim()).filter(Boolean)});if(!db.settings.users.length)db.settings.users=['Balcão']});closeModal(el);toast('Configurações salvas','ok');refresh()};
  el.querySelector('[data-ok]').onclick=saveS;
- el.querySelector('[data-bk]').onclick=()=>toast('Para baixar o backup, use o arquivo index.html aberto no computador da oficina','y');
+ el.querySelector('[data-bk]').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(DB)],{type:'application/json'}));a.download='bancada-backup-'+today()+'.json';a.click()};
  $('#rbk',el).onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;let d;
   try{d=fixDB(JSON.parse(await f.text()))}catch(err){d=null}
   if(!d)return toast('Arquivo de backup inválido','err');
@@ -1757,11 +1757,6 @@ function boot(){
 }
 if(AUTH)boot();else showLogin();
 </script>
-<script>
-/* Versão hospedada: o navegador do site bloqueia impressão e downloads.
-   No arquivo index.html aberto no computador da oficina, tudo funciona. */
-printHTML=function(){toast('Para imprimir, use o arquivo index.html aberto no computador da oficina','y')};
-csv=function(){toast('Para exportar CSV, use o arquivo index.html aberto no computador da oficina','y')};
-</script>
+
 
 </body></html>
