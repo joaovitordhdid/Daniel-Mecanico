@@ -335,6 +335,21 @@ body.m-pdv{overflow:hidden}
 .osi .np{font-size:11px;font-weight:800;color:var(--red)}
 .osnote{font-size:13px;background:var(--soft);border-radius:8px;padding:6px 8px;overflow-wrap:anywhere}
 .osa{display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap}
+.splitbtn{margin:0 0 12px;width:100%;justify-content:center}
+.splitb{background:var(--soft);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.sph{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.spg{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+.spg .sw{display:flex}
+@media(max-width:560px){.spg{grid-template-columns:1fr}}
+#sprest .maqs,#sprest .pixbox p{display:none}
+#sprest .maqv b{font-size:36px}
+#sprest .maqbox{padding:9px 14px}
+#sprest .pixqr{width:150px}
+#sprest .pixbox{margin-bottom:6px;padding:10px}
+@media(min-width:561px){#sprest:has(#parc){display:grid;grid-template-columns:1fr 1fr;column-gap:12px}
+#sprest:has(#parc)>.maqbox{grid-column:1/-1}
+#sprest:has(#parc)>:nth-child(2){grid-area:2/1;align-self:end}#sprest:has(#parc)>:nth-child(3){grid-area:3/1}
+#sprest:has(#parc)>:nth-child(4){grid-area:2/2;align-self:end}#sprest:has(#parc)>:nth-child(5){grid-area:3/2}}
 .maqbox{background:linear-gradient(135deg,#fff8dc,#fff1c2);border:1.5px solid #e9cf72;border-radius:14px;padding:12px 14px;margin-bottom:6px}
 .maqv{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .maqv span{font-weight:800;text-transform:uppercase;font-size:12.5px;letter-spacing:.05em;color:#6e5200}
@@ -824,6 +839,8 @@ function csv(rows,name){const t=rows.map(r=>r.map(c=>`"${String(c??'').replace(/
 /* ---------- recibo ---------- */
 /* subtotal mostrado = soma das linhas (já com desconto do item); "Desconto" = só o desconto no total */
 const lineDisc=o=>r2(o.items.reduce((a,i)=>a+(i.disc||0),0));
+function payName(o){return o.splits?o.splits.map(x=>ML[x.method]||x.method).join(' + '):(ML[o.method]||o.method||'')}
+function payLbl(o){return o.splits?o.splits.map(x=>`${ML[x.method]||x.method} ${fmt(x.amount)}${x.installments>1?' '+x.installments+'x':''}`).join(' + '):`${ML[o.method]||o.method}${o.installments>1?' '+o.installments+'x':''}`}
 function receiptHTML(o){
  const s=DB.settings,ld=lineDisc(o),gd=r2((o.discount||0)-ld);
  return `<div class="rcpt"><div class="c"><span class="rlogo">${LOGO}</span><b style="font-size:16px">${esc(s.store.toUpperCase())}</b><br>${esc(s.address)}<br>WhatsApp ${esc(s.whats)}</div><hr>
@@ -833,7 +850,7 @@ function receiptHTML(o){
  <hr><div class="l"><span>Subtotal</span><span>${m2s(o.subtotal-ld)}</span></div>
  ${gd>0?`<div class="l"><span>Desconto</span><span>-${m2s(gd)}</span></div>`:''}
  <div class="l tt"><span>TOTAL</span><span>R$ ${m2s(o.total)}</span></div>
- <div class="l"><span>Pagamento</span><span>${ML[o.method]||esc(o.method)}${o.installments>1?' '+o.installments+'x':''}</span></div>${o.auth?`<div class="l"><span>Aut./NSU</span><span>${esc(o.auth)}</span></div>`:''}
+ ${o.splits?o.splits.map(x=>`<div class="l"><span>${esc(ML[x.method]||x.method)}${x.installments>1?' '+x.installments+'x':''}</span><span>${m2s(x.amount)}</span></div>${x.auth?`<div class="l"><span>Aut./NSU</span><span>${esc(x.auth)}</span></div>`:''}`).join(''):`<div class="l"><span>Pagamento</span><span>${ML[o.method]||esc(o.method)}${o.installments>1?' '+o.installments+'x':''}</span></div>${o.auth?`<div class="l"><span>Aut./NSU</span><span>${esc(o.auth)}</span></div>`:''}`}
  ${o.received?`<div class="l"><span>Recebido</span><span>${m2s(o.received)}</span></div><div class="l"><span>Troco</span><span>${m2s(o.change)}</span></div>`:''}
  ${o.status==='cancelado'?'<hr><div class="c"><b>*** PEDIDO CANCELADO ***</b></div>':''}
  <hr><div class="c">Obrigado pela preferência!<br>Volte sempre 🔧</div></div>`;
@@ -842,7 +859,7 @@ function receiptText(o){
  const s=DB.settings,gd=r2((o.discount||0)-lineDisc(o));let t=`*${s.store.toUpperCase()}* — Comprovante ${o.num}\n${fdt(o.ts)}\n${o.customer&&o.customer.name?`Cliente: ${o.customer.name}${o.customer.car?' · '+o.customer.car:''}\n`:''}\n`;
  o.items.forEach(i=>t+=`${i.qty}x ${i.name} — ${fmt(i.price*i.qty-(i.disc||0))}\n`);
  if(gd>0)t+=`Desconto: -${fmt(gd)}\n`;
- t+=`\n*Total: ${fmt(o.total)}*\nPagamento: ${ML[o.method]}${o.installments>1?' '+o.installments+'x':''}\n`;
+ t+=`\n*Total: ${fmt(o.total)}*\nPagamento: ${payLbl(o)}\n`;
  if(o.change)t+=`Troco: ${fmt(o.change)}\n`;
  return t+`\nObrigado! 🔧`;
 }
@@ -859,8 +876,15 @@ function showReceipt(o,title){
 /* ---------- pagamento (PDV) ---------- */
 /* Teclas: 1–4 trocam a forma quando o foco não está num campo; Alt+1…4 sempre;
    ← → trocam fora de campos de texto (inclusive no campo de valor recebido); Enter confirma; Esc fecha. */
+/* detalhes da forma de pagamento para um valor (venda inteira ou o resto de um pagamento dividido) */
+function cardPayHTML(amt,cr){return `<div class="maqbox"><div class="maqv"><span>Digite na maquininha · ${cr?'Crédito':'Débito'}</span><b>${fmt(amt)}</b></div>
+    <ol class="maqs"><li>Na maquininha escolha <b>${cr?'Crédito':'Débito'}</b>${cr?' e o parcelamento abaixo':''} e digite o valor acima.</li><li>Passe, insira ou aproxime o cartão do cliente.</li><li>Quando aparecer <b>APROVADA</b>, clique em <b>Aprovado na maquininha</b>.</li></ol></div>
+    ${cr?`<label class="f">Parcelas</label><select class="input" id="parc">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}">${n}x de ${fmt(amt/n)}${n===1?' (à vista)':''}</option>`).join('')}</select>`:''}
+    <label class="f">Código de autorização / NSU (opcional, está no comprovante)</label><input class="input" id="aut" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="Ex.: 123456">`}
+function pixPayHTML(amt){const st=DB.settings;return st.pix?`<div class="pixbox"><div class="pixqr">${pixQRSvg(pixPayload(st.pix,st.pixName,st.pixCity,amt))}</div><div><b>${I.pix} Escaneie com o app do banco</b><span class="mut sm">Valor já preenchido</span><span class="pixv">${fmt(amt)}</span><span class="pixk">Chave: ${esc(st.pix)}</span><p class="mut sm" style="margin:10px 0 0">Confira o recebimento no app do banco antes de confirmar.</p></div></div>`
+    :`<div class="card" style="background:var(--y3);border:1.5px dashed #e0c25a;box-shadow:none;margin-bottom:14px"><b>${I.warn} Chave Pix não cadastrada.</b><br><span class="mut sm">Cadastre em ⚙ Configurações (canto superior direito) para gerar o QR Code automaticamente. Você ainda pode receber o Pix e confirmar aqui.</span></div>`}
 function payModal(total,{title='Pagamento',onPay}){
- let m='pix',inp=null,done=false;
+ let m='pix',inp=null,done=false,split=false,rest='pix';
  const ms=METHODS,n=ms.length;
  const el=modal(`<h2 class="h">${title}</h2><div class="paytot"><span>Total a pagar</span><b>${fmt(total)}</b></div>
   <div class="paym">${ms.map((x,i)=>`<button class="pm" data-m="${x.k}"><span class="k">${i+1}</span>${I[x.i]}<b>${x.l}</b></button>`).join('')}</div>
@@ -880,35 +904,60 @@ function payModal(total,{title='Pagamento',onPay}){
  }
  const calc=()=>{if(!inp)return;const r=parseMoney(inp.value),t=r2(r-total),tb=$('#troco',el);tb.parentElement.classList.toggle('neg',t<0);tb.previousElementSibling.textContent=t<0?'Falta':'Troco';tb.textContent=fmt(Math.abs(t));ok.disabled=t<0};
  function sel(k){
-  m=k;$$('.pm',el).forEach(b=>b.classList.toggle('on',b.dataset.m===k));draw();
+  if(k!==m)split=false;m=k;$$('.pm',el).forEach(b=>b.classList.toggle('on',b.dataset.m===k));draw();
   /* foco no 1º campo da forma escolhida; senão no próprio modal (Enter e atalhos continuam valendo) */
   const f=$('.pdet input:not(#aut)',el);if(f)f.focus();else el.querySelector('.md').focus();
  }
  function draw(){
   ok.disabled=false;inp=null;ok.innerHTML='Confirmar <small>(Enter)</small>';
-  if(m==='dinheiro'){
+  if(m==='dinheiro'&&split){
+   det.innerHTML=`<div class="splitb"><div class="sph"><b>${I.cash} Parte em dinheiro + resto em outra forma</b><button type="button" class="btn s ghost" id="spx">Voltar: tudo em dinheiro</button></div>
+    <div class="spg"><div><label class="f">Valor em dinheiro</label><input class="input big num" id="spc" inputmode="decimal" placeholder="0,00"></div>
+    <div><label class="f">Resto em</label><div class="sw" id="spr">${[['pix','Pix'],['debito','Débito'],['credito','Crédito']].map(([k,l])=>`<button type="button" data-r="${k}" class="${rest===k?'on':''}">${l}</button>`).join('')}</div></div></div></div>
+    <div id="sprest"></div>`;
+   const sc=$('#spc',det);
+   const drawRest=()=>{
+    const cash=parseMoney(sc.value),amt=r2(total-cash),box=$('#sprest',det);
+    const keep={aut:($('#aut',det)||{}).value||'',parc:($('#parc',det)||{}).value||'1'};
+    if(!(cash>0)||!(amt>0)){box.innerHTML=`<p class="mut sm" style="margin:10px 0">${cash>=total&&cash>0?'O valor em dinheiro cobre a venda inteira: use <b>Voltar: tudo em dinheiro</b> para calcular o troco.':'Digite quanto o cliente vai pagar em dinheiro (menor que o total).'}</p>`;ok.disabled=true;ok.innerHTML='Confirmar <small>(Enter)</small>';return}
+    ok.disabled=false;
+    box.innerHTML=rest==='pix'?pixPayHTML(amt):cardPayHTML(amt,rest==='credito');
+    if($('#aut',det))$('#aut',det).value=keep.aut;if($('#parc',det))$('#parc',det).value=keep.parc;
+    ok.innerHTML=rest==='pix'?'Confirmar <small>(Enter)</small>':`${I.check} Recebido e aprovado <small>(Enter)</small>`;
+   };
+   sc.oninput=drawRest;
+   $$('#spr button',det).forEach(b=>b.onclick=()=>{rest=b.dataset.r;$$('#spr button',det).forEach(x=>x.classList.toggle('on',x===b));drawRest();sc.focus()});
+   $('#spx',det).onclick=()=>{split=false;draw();const f=$('#recv',det);if(f)f.focus()};
+   drawRest();
+  }else if(m==='dinheiro'){
    det.innerHTML=`<label class="f">Valor recebido</label><input class="input big num" id="recv" inputmode="decimal" placeholder="0,00">
    <div class="notes">${[0,10,20,50,100,200].map(v=>`<button class="btn s" data-v="${v}">${v?'R$ '+v:'Valor exato'}</button>`).join('')}</div>
-   <div class="troco"><span>Troco</span><b id="troco">R$ 0,00</b></div>`;
+   <div class="troco"><span>Troco</span><b id="troco">R$ 0,00</b></div>
+   <button type="button" class="btn s splitbtn" id="spl">${I.cash} Dividir: parte em dinheiro + resto em Pix ou cartão</button>`;
+   $('#spl',det).onclick=()=>{split=true;draw();const f=$('#spc',det);if(f)f.focus()};
    inp=$('#recv',det);inp.oninput=calc;
    $$('[data-v]',det).forEach(b=>b.onclick=()=>{inp.value=m2s(+b.dataset.v||total);calc();inp.focus()});
    calc();
   }else if(m==='credito'||m==='debito'){
    const cr=m==='credito';
-   det.innerHTML=`<div class="maqbox"><div class="maqv"><span>Digite na maquininha</span><b>${fmt(total)}</b></div>
-    <ol class="maqs"><li>Na maquininha escolha <b>${cr?'Crédito':'Débito'}</b>${cr?' e o parcelamento abaixo':''} e digite o valor acima.</li><li>Passe, insira ou aproxime o cartão do cliente.</li><li>Quando aparecer <b>APROVADA</b>, clique em <b>Aprovado na maquininha</b>.</li></ol></div>
-    ${cr?`<label class="f">Parcelas</label><select class="input" id="parc">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}">${n}x de ${fmt(total/n)}${n===1?' (à vista)':''}</option>`).join('')}</select>`:''}
-    <label class="f">Código de autorização / NSU (opcional, está no comprovante)</label><input class="input" id="aut" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="Ex.: 123456">`;
+   det.innerHTML=cardPayHTML(total,cr);
    ok.innerHTML=`${I.check} Aprovado na maquininha <small>(Enter)</small>`;
   }else if(m==='pix'){
-   const st=DB.settings;
-   det.innerHTML=st.pix?`<div class="pixbox"><div class="pixqr">${pixQRSvg(pixPayload(st.pix,st.pixName,st.pixCity,total))}</div><div><b>${I.pix} Escaneie com o app do banco</b><span class="mut sm">Valor já preenchido</span><span class="pixv">${fmt(total)}</span><span class="pixk">Chave: ${esc(st.pix)}</span><p class="mut sm" style="margin:10px 0 0">Confira o recebimento no app do banco antes de confirmar.</p></div></div>`
-    :`<div class="card" style="background:var(--y3);border:1.5px dashed #e0c25a;box-shadow:none;margin-bottom:14px"><b>${I.warn} Chave Pix não cadastrada.</b><br><span class="mut sm">Cadastre em ⚙ Configurações (canto superior direito) para gerar o QR Code automaticamente. Você ainda pode receber o Pix e confirmar aqui.</span></div>`;
+   det.innerHTML=pixPayHTML(total);
   }
  }
  function confirmPay(){
   if(done)return;
   const info={method:m,total};
+  if(m==='dinheiro'&&split){
+   const cash=parseMoney($('#spc',el).value),amt=r2(total-cash);
+   if(!(cash>0)||!(amt>0)){beep(false);$('#spc',el).focus();return toast('Digite um valor em dinheiro menor que o total','err')}
+   const sp2={method:rest,amount:amt};
+   if(rest==='credito')sp2.installments=+$('#parc',el).value;
+   if(rest!=='pix'){const a=($('#aut',el).value||'').trim().replace(/[^\w-]/g,'').slice(0,20);if(a)sp2.auth=a}
+   Object.assign(info,{method:'misto',splits:[{method:'dinheiro',amount:cash},sp2]});
+   done=true;closeModal(el);onPay(info);return;
+  }
   if(m==='dinheiro'){info.received=parseMoney(inp.value);info.change=r2(info.received-total);if(info.change<0){beep(false);inp.focus();return toast(info.received?'Valor recebido menor que o total':'Informe o valor recebido','err')}}
   if(m==='credito')info.installments=+$('#parc',el).value;
   if(m==='credito'||m==='debito'){const a=($('#aut',el).value||'').trim().replace(/[^\w-]/g,'').slice(0,20);if(a)info.auth=a}
@@ -1179,10 +1228,10 @@ function finalizeSale(pay){
   const os=pcart.osId?db.saved.find(v=>v.id===pcart.osId):null;
   const o={id:uid(),num:nextNum(db),ts:Date.now(),channel:'PDV',items,subtotal:t.sub,discount:t.disc,total:t.total,method:pay.method,paid:true,status:'entregue',seller:user,cashId:cash.id,customer:os?{name:os.name,phone:os.phone||'',car:os.car||''}:(pay.customer||{})};
   if(os){o.osId=os.id;if(os.note)o.note=os.note;db.saved=db.saved.filter(v=>v.id!==os.id)}
-  if(o.paid)o.paidTs=o.ts;if(pay.method==='dinheiro'){o.received=pay.received;o.change=pay.change}if(pay.installments)o.installments=pay.installments;if(pay.auth)o.auth=pay.auth;
+  if(o.paid)o.paidTs=o.ts;if(pay.method==='dinheiro'){o.received=pay.received;o.change=pay.change}if(pay.installments)o.installments=pay.installments;if(pay.auth)o.auth=pay.auth;if(pay.splits)o.splits=pay.splits.map(x=>({...x}));
   items.forEach(i=>mov(db,i.pid,-i.qty,'venda',o.num,'PDV',user));
   db.orders.push(o);
-  if(o.paid)db.payments.push({id:uid(),ts:o.ts,orderId:o.id,num:o.num,method:o.method,amount:o.total,cashId:cash.id,kind:'venda',user,...(o.auth?{auth:o.auth}:{}),...(o.installments>1?{installments:o.installments}:{})});
+  if(o.paid)(o.splits||[{method:o.method,amount:o.total,auth:o.auth,installments:o.installments}]).forEach(x=>db.payments.push({id:uid(),ts:o.ts,orderId:o.id,num:o.num,method:x.method,amount:x.amount,cashId:cash.id,kind:'venda',user,...(x.auth?{auth:x.auth}:{}),...(x.installments>1?{installments:x.installments}:{})}));
   return o;
  });
  if(!o){beep(false);toast(err,'err');refresh();return}
@@ -1417,7 +1466,7 @@ function tDash(){
  const since=Date.now()-30*864e5,top={};os.filter(o=>o.ts>=since).forEach(o=>o.items.forEach(i=>{top[i.pid]=top[i.pid]||{n:i.name,q:0,v:0};top[i.pid].q+=i.qty;top[i.pid].v+=i.price*i.qty-(i.disc||0)}));
  const tl=Object.values(top).sort((a,b)=>b.q-a.q).slice(0,6),tm=Math.max(1,...tl.map(x=>x.q));
  const low=DB.products.filter(isLow).sort((a,b)=>a.stock-b.stock);
- const byM={};td.filter(o=>o.paid).forEach(o=>byM[o.method]=r2((byM[o.method]||0)+o.total));
+ const byM={};td.filter(o=>o.paid).forEach(o=>(o.splits||[{method:o.method,amount:o.total}]).forEach(x=>byM[x.method]=r2((byM[x.method]||0)+x.amount)));
  const valEst=r2(DB.products.filter(p=>!p.service).reduce((s,p)=>s+p.cost*Math.max(0,p.stock),0));
  const c=openCash();
  const hoje=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
@@ -1616,14 +1665,14 @@ function labelsModal(){
 /* ----- VENDAS ----- */
 function tVendas(){
  const per={hoje:sod(Date.now()),'7':sod(Date.now()-6*864e5),'30':sod(Date.now()-29*864e5),tudo:0}[venF.per];
- const list=DB.orders.filter(o=>o.ts>=per&&(!venF.m||o.method===venF.m)).sort((a,b)=>b.ts-a.ts);
+ const list=DB.orders.filter(o=>o.ts>=per&&(!venF.m||o.method===venF.m||(o.splits&&o.splits.some(x=>x.method===venF.m)))).sort((a,b)=>b.ts-a.ts);
  const v=list.filter(valid),tot=r2(v.reduce((s,o)=>s+o.total,0)),luc=r2(v.reduce((s,o)=>s+orderProfit(o),0));
  $('#adm').innerHTML=`<div class="toolbar"><div class="sw">${[['hoje','Hoje'],['7','7 dias'],['30','30 dias'],['tudo','Tudo']].map(([k,l])=>`<button class="${venF.per===k?'on':''}" onclick="venF.per='${k}';tVendas()">${l}</button>`).join('')}</div>
  <select class="input" style="max-width:170px" onchange="venF.m=this.value;tVendas()"><option value="">Todos pagamentos</option>${Object.entries(ML).map(([k,l])=>`<option value="${k}" ${venF.m===k?'selected':''}>${l}</option>`).join('')}</select><span class="sp"></span>
- <button class="btn s" onclick="csv([['Pedido','Data','Cliente','Vendedor','Pagamento','Pago','Status','Desconto','Total','Lucro'],...DB.orders.map(o=>[o.num,fdt(o.ts),o.customer.name||'',o.seller,ML[o.method],o.paid?'sim':'não',stInfo(o)[0],m2s(o.discount),m2s(o.total),m2s(orderProfit(o))])],'vendas-bancada.csv')">${I.down} CSV</button></div>
+ <button class="btn s" onclick="csv([['Pedido','Data','Cliente','Vendedor','Pagamento','Pago','Status','Desconto','Total','Lucro'],...DB.orders.map(o=>[o.num,fdt(o.ts),o.customer.name||'',o.seller,payLbl(o),o.paid?'sim':'não',stInfo(o)[0],m2s(o.discount),m2s(o.total),m2s(orderProfit(o))])],'vendas-bancada.csv')">${I.down} CSV</button></div>
  <div class="kpis"><div class="kpi y"><div class="l">Faturamento</div><div class="v">${fmt(tot)}</div></div><div class="kpi g"><div class="l">Lucro bruto</div><div class="v">${fmt(luc)}</div></div><div class="kpi"><div class="l">Pedidos</div><div class="v">${v.length}</div></div><div class="kpi"><div class="l">Ticket médio</div><div class="v">${fmt(v.length?tot/v.length:0)}</div></div></div>
  <div class="tbl-w" ${list.length?'':'hidden'}><table class="t"><thead><tr><th>Pedido</th><th>Data</th><th>Cliente / vendedor</th><th>Pagamento</th><th>Status</th><th class="r-al">Total</th></tr></thead><tbody>
- ${list.map(o=>`<tr class="click" onclick="orderDetail('${o.id}')"><td><b>${esc(o.num)}</b></td><td class="num">${fdt(o.ts)}</td><td>${esc(o.customer.name||'—')}<div class="mut sm">${esc(o.seller)}</div></td><td>${ML[o.method]||o.method}</td><td>${stPill(o)}</td><td class="r-al"><b>${fmt(o.total)}</b></td></tr>`).join('')}
+ ${list.map(o=>`<tr class="click" onclick="orderDetail('${o.id}')"><td><b>${esc(o.num)}</b></td><td class="num">${fdt(o.ts)}</td><td>${esc(o.customer.name||'—')}<div class="mut sm">${esc(o.seller)}</div></td><td>${esc(payName(o))}</td><td>${stPill(o)}</td><td class="r-al"><b>${fmt(o.total)}</b></td></tr>`).join('')}
  </tbody></table></div>${list.length?'':emptyBox(I.cash,DB.orders.length?'Nenhuma venda no período':'Nenhuma venda ainda',DB.orders.length?'Escolha outro período ou forma de pagamento.':'As vendas feitas no balcão aparecem aqui com recibo, forma de pagamento e lucro.',DB.orders.length?'':`<a class="btn y" href="#/pdv">${I.pdv} Fazer primeira venda</a>`,'box')}`;
 }
 function orderDetail(id){
@@ -1638,12 +1687,12 @@ function orderDetail(id){
 async function cancelOrder(id){
  const o=DB.orders.find(x=>x.id===id);if(!o||!valid(o))return false;
  const pm=o.method;
- if(!await confirmBox(`Cancelar o pedido <b>${esc(o.num)}</b>? Os itens voltam para o estoque.${o.paid?`<br><br><b style="color:var(--red)">Este pedido está pago (${ML[pm]} ${fmt(o.total)}): faça a devolução do valor ao cliente.</b>`:''}`,'Cancelar pedido','r'))return false;
+ if(!await confirmBox(`Cancelar o pedido <b>${esc(o.num)}</b>? Os itens voltam para o estoque.${o.paid?`<br><br><b style="color:var(--red)">Este pedido está pago (${esc(payLbl(o))} · total ${fmt(o.total)}): faça a devolução do valor ao cliente.</b>`:''}`,'Cancelar pedido','r'))return false;
  const user=operator();
  const x=tx(db=>{const x=db.orders.find(y=>y.id===id);if(!x||x.status==='cancelado')return null;x.status='cancelado';x.cancelTs=Date.now();x.cancelBy=user;
   x.items.forEach(i=>{if(!i.service&&prod2(db,i.pid))mov(db,i.pid,i.qty,'estorno','Cancelamento '+x.num,x.channel||'PDV',user)});
   if(x.paid){const cash=db.cash.find(c=>c.status==='aberto');x.refunded=true;
-   db.payments.push({id:uid(),ts:Date.now(),orderId:x.id,num:x.num,method:x.method,amount:-x.total,cashId:cash?cash.id:null,kind:'estorno',user})}
+   (x.splits||[{method:x.method,amount:x.total}]).forEach(p=>db.payments.push({id:uid(),ts:Date.now(),orderId:x.id,num:x.num,method:p.method,amount:-p.amount,cashId:cash?cash.id:null,kind:'estorno',user}))}
   return x});
  if(!x){toast(`Pedido ${esc(o.num)} já estava cancelado`,'y');refresh();return true}
  toast(`Pedido ${esc(o.num)} cancelado, estoque estornado`,'ok');refresh();return true;
