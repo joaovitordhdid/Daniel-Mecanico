@@ -322,6 +322,11 @@ body.m-pdv{overflow:hidden}
 .pmain>*,.dgrid>*,.co>*,.kan>*,.grid2>*,.pleft>*{min-width:0}
 .flash{animation:fl .6s}
 @keyframes fl{0%{background:#ffe9a0}}
+.maqbox{background:linear-gradient(135deg,#fff8dc,#fff1c2);border:1.5px solid #e9cf72;border-radius:14px;padding:12px 14px;margin-bottom:6px}
+.maqv{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.maqv span{font-weight:800;text-transform:uppercase;font-size:12.5px;letter-spacing:.05em;color:#6e5200}
+.maqv b{font-family:"Barlow Condensed";font-size:46px;line-height:1;color:var(--g);font-variant-numeric:tabular-nums}
+.maqs{margin:8px 0 0;padding-left:20px;font-size:13.5px;line-height:1.5}
 .pixbox{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;background:linear-gradient(135deg,#f3f7f6,#e9f1ef);border:1.5px solid #cfe0dc;border-radius:14px;padding:12px;margin-bottom:12px}
 .pixqr{width:216px;max-width:100%;background:#fff;border-radius:12px;padding:10px;flex:none;box-shadow:0 2px 10px rgba(20,50,58,.12);border:1px solid #dfe5e3;position:relative}
 .pixqr svg{display:block;width:100%;height:auto}
@@ -723,7 +728,7 @@ function receiptHTML(o){
  <hr><div class="l"><span>Subtotal</span><span>${m2s(o.subtotal-ld)}</span></div>
  ${gd>0?`<div class="l"><span>Desconto</span><span>-${m2s(gd)}</span></div>`:''}
  <div class="l tt"><span>TOTAL</span><span>R$ ${m2s(o.total)}</span></div>
- <div class="l"><span>Pagamento</span><span>${ML[o.method]||esc(o.method)}${o.installments>1?' '+o.installments+'x':''}</span></div>
+ <div class="l"><span>Pagamento</span><span>${ML[o.method]||esc(o.method)}${o.installments>1?' '+o.installments+'x':''}</span></div>${o.auth?`<div class="l"><span>Aut./NSU</span><span>${esc(o.auth)}</span></div>`:''}
  ${o.received?`<div class="l"><span>Recebido</span><span>${m2s(o.received)}</span></div><div class="l"><span>Troco</span><span>${m2s(o.change)}</span></div>`:''}
  ${o.status==='cancelado'?'<hr><div class="c"><b>*** PEDIDO CANCELADO ***</b></div>':''}
  <hr><div class="c">Obrigado pela preferência!<br>Volte sempre 🔧</div></div>`;
@@ -772,10 +777,10 @@ function payModal(total,{title='Pagamento',onPay}){
  function sel(k){
   m=k;$$('.pm',el).forEach(b=>b.classList.toggle('on',b.dataset.m===k));draw();
   /* foco no 1º campo da forma escolhida; senão no próprio modal (Enter e atalhos continuam valendo) */
-  const f=$('.pdet input',el);if(f)f.focus();else el.querySelector('.md').focus();
+  const f=$('.pdet input:not(#aut)',el);if(f)f.focus();else el.querySelector('.md').focus();
  }
  function draw(){
-  ok.disabled=false;inp=null;
+  ok.disabled=false;inp=null;ok.innerHTML='Confirmar <small>(Enter)</small>';
   if(m==='dinheiro'){
    det.innerHTML=`<label class="f">Valor recebido</label><input class="input big num" id="recv" inputmode="decimal" placeholder="0,00">
    <div class="notes">${[0,10,20,50,100,200].map(v=>`<button class="btn s" data-v="${v}">${v?'R$ '+v:'Valor exato'}</button>`).join('')}</div>
@@ -783,10 +788,13 @@ function payModal(total,{title='Pagamento',onPay}){
    inp=$('#recv',det);inp.oninput=calc;
    $$('[data-v]',det).forEach(b=>b.onclick=()=>{inp.value=m2s(+b.dataset.v||total);calc();inp.focus()});
    calc();
-  }else if(m==='credito'){
-   det.innerHTML=`<label class="f">Parcelas</label><select class="input" id="parc">${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n}x de ${fmt(total/n)}${n===1?' (à vista)':''}</option>`).join('')}</select><p class="mut sm">Passe o cartão na maquininha e confirme aqui após aprovado.</p>`;
-  }else if(m==='debito'){
-   det.innerHTML=`<p class="mut">Passe o cartão de débito na maquininha e confirme após aprovado.</p>`;
+  }else if(m==='credito'||m==='debito'){
+   const cr=m==='credito';
+   det.innerHTML=`<div class="maqbox"><div class="maqv"><span>Digite na maquininha</span><b>${fmt(total)}</b></div>
+    <ol class="maqs"><li>Na maquininha escolha <b>${cr?'Crédito':'Débito'}</b>${cr?' e o parcelamento abaixo':''} e digite o valor acima.</li><li>Passe, insira ou aproxime o cartão do cliente.</li><li>Quando aparecer <b>APROVADA</b>, clique em <b>Aprovado na maquininha</b>.</li></ol></div>
+    ${cr?`<label class="f">Parcelas</label><select class="input" id="parc">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}">${n}x de ${fmt(total/n)}${n===1?' (à vista)':''}</option>`).join('')}</select>`:''}
+    <label class="f">Código de autorização / NSU (opcional, está no comprovante)</label><input class="input" id="aut" inputmode="numeric" maxlength="20" autocomplete="off" placeholder="Ex.: 123456">`;
+   ok.innerHTML=`${I.check} Aprovado na maquininha <small>(Enter)</small>`;
   }else if(m==='pix'){
    const st=DB.settings;
    det.innerHTML=st.pix?`<div class="pixbox"><div class="pixqr">${pixQRSvg(pixPayload(st.pix,st.pixName,st.pixCity,total))}</div><div><b>${I.pix} Escaneie com o app do banco</b><span class="mut sm">Valor já preenchido</span><span class="pixv">${fmt(total)}</span><span class="pixk">Chave: ${esc(st.pix)}</span><p class="mut sm" style="margin:10px 0 0">Confira o recebimento no app do banco antes de confirmar.</p></div></div>`
@@ -798,6 +806,7 @@ function payModal(total,{title='Pagamento',onPay}){
   const info={method:m,total};
   if(m==='dinheiro'){info.received=parseMoney(inp.value);info.change=r2(info.received-total);if(info.change<0){beep(false);inp.focus();return toast(info.received?'Valor recebido menor que o total':'Informe o valor recebido','err')}}
   if(m==='credito')info.installments=+$('#parc',el).value;
+  if(m==='credito'||m==='debito'){const a=($('#aut',el).value||'').trim().replace(/[^\w-]/g,'').slice(0,20);if(a)info.auth=a}
   done=true;closeModal(el);onPay(info);
  }
  ok.onclick=confirmPay;
@@ -1060,10 +1069,10 @@ function finalizeSale(pay){
   if(Math.abs(t.total-pay.total)>0.004){err=`O total mudou para ${fmt(t.total)} (preço alterado em outra aba). Confira e finalize de novo.`;return null}
   const items=pcart.items.map(i=>{const p=prod2(db,i.pid);return{pid:p.id,code:p.code,name:p.name,qty:i.qty,price:p.price,cost:p.cost||0,disc:r2(Math.min(i.disc||0,p.price*i.qty)),service:!!p.service}});
   const o={id:uid(),num:nextNum(db),ts:Date.now(),channel:'PDV',items,subtotal:t.sub,discount:t.disc,total:t.total,method:pay.method,paid:true,status:'entregue',seller:user,cashId:cash.id,customer:pay.customer||{}};
-  if(o.paid)o.paidTs=o.ts;if(pay.method==='dinheiro'){o.received=pay.received;o.change=pay.change}if(pay.installments)o.installments=pay.installments;
+  if(o.paid)o.paidTs=o.ts;if(pay.method==='dinheiro'){o.received=pay.received;o.change=pay.change}if(pay.installments)o.installments=pay.installments;if(pay.auth)o.auth=pay.auth;
   items.forEach(i=>mov(db,i.pid,-i.qty,'venda',o.num,'PDV',user));
   db.orders.push(o);
-  if(o.paid)db.payments.push({id:uid(),ts:o.ts,orderId:o.id,num:o.num,method:o.method,amount:o.total,cashId:cash.id,kind:'venda',user});
+  if(o.paid)db.payments.push({id:uid(),ts:o.ts,orderId:o.id,num:o.num,method:o.method,amount:o.total,cashId:cash.id,kind:'venda',user,...(o.auth?{auth:o.auth}:{}),...(o.installments>1?{installments:o.installments}:{})});
   return o;
  });
  if(!o){beep(false);toast(err,'err');refresh();return}
@@ -1086,7 +1095,8 @@ function cashReport(c){
  const recebido=r2(pays.reduce((s,p)=>s+p.amount,0));
  const sangria=r2((c.moves||[]).filter(m=>m.t==='sangria').reduce((s,m)=>s+m.v,0)),supr=r2((c.moves||[]).filter(m=>m.t==='suprimento').reduce((s,m)=>s+m.v,0));
  const esperado=r2(c.openAmount+by.dinheiro+supr-sangria);
- return{by,sales,items,vendido,recebido,esperado,sangria,supr,lucro:r2(sales.reduce((s,o)=>s+orderProfit(o),0))};
+ const cards=pays.filter(p=>p.method==='debito'||p.method==='credito').sort((a,b)=>a.ts-b.ts);
+ return{by,sales,items,vendido,recebido,esperado,sangria,supr,cards,lucro:r2(sales.reduce((s,o)=>s+orderProfit(o),0))};
 }
 function cashReportHTML(c){
  const r=cashReport(c),s=DB.settings;
@@ -1097,6 +1107,7 @@ function cashReportHTML(c){
  <div class="l tt"><span>TOTAL VENDIDO</span><span>${m2s(r.vendido)}</span></div><div class="l"><span>Lucro bruto estimado</span><span>${m2s(r.lucro)}</span></div><hr>
  <b>RECEBIMENTOS</b>${Object.keys(ML).map(k=>`<div class="l"><span>${ML[k]}</span><span>${m2s(r.by[k])}</span></div>`).join('')}
  <div class="l tt"><span>TOTAL RECEBIDO</span><span>${m2s(r.recebido)}</span></div>
+ ${r.cards.length?`<hr><b>CARTÕES NA MAQUININHA</b><div class="sm">Confira com o extrato da maquininha</div>${r.cards.map(p=>`<div class="l"><span>${fh(p.ts)} ${p.method==='debito'?'Déb':'Créd'+(p.installments>1?' '+p.installments+'x':'')}${p.auth?' · '+esc(p.auth):''}</span><span>${m2s(p.amount)}</span></div>`).join('')}`:''}
  <hr>
  <b>DINHEIRO NA GAVETA</b><div class="l"><span>Fundo de troco</span><span>${m2s(c.openAmount)}</span></div><div class="l"><span>+ Recebido em dinheiro</span><span>${m2s(r.by.dinheiro)}</span></div>
  ${r.supr?`<div class="l"><span>+ Suprimentos</span><span>${m2s(r.supr)}</span></div>`:''}${r.sangria?`<div class="l"><span>− Sangrias</span><span>${m2s(r.sangria)}</span></div>`:''}
